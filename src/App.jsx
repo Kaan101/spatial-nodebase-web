@@ -26,6 +26,17 @@ function MapCenterUpdater({ center }) {
   return null;
 }
 
+// Görünüm değiştiğinde haritadaki gri tile (kare) hatasını önlemek için yeniden boyutlandırıcı
+function MapResizer({ viewMode, isFormVisible }) {
+  const map = useMap();
+  useEffect(() => {
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 200); // Animasyon veya render sonrası Leaflet'i uyarır
+  }, [viewMode, isFormVisible, map]);
+  return null;
+}
+
 function Login({ onLogin }) {
   const [key, setKey] = useState('');
   const [error, setError] = useState('');
@@ -72,6 +83,10 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
   const [focusedLocation, setFocusedLocation] = useState(null); 
   const fileInputRef = useRef(null);
   
+  // Görünüm Parametreleri
+  const [viewMode, setViewMode] = useState(1); // 1 = Yan Yana, 2 = Tam Genişlik Harita
+  const [isFormVisible, setIsFormVisible] = useState(false); // Görünüm 2 için formu aç/kapat
+
   const [formData, setFormData] = useState({
     code: 'TRK-002', label: 'Test Aracı', transaction_id: 'TXN-' + Math.floor(Math.random() * 10000),
     latitude: 41.0150, longitude: 28.9850
@@ -85,12 +100,10 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         headers: { 'X-API-Key': apiKey }
       });
       
-      // Tekil (Unique) kayıtları filtreleme
       const uniqueNodes = [];
       const seen = new Set();
       
       res.data.forEach(node => {
-        // Kod, İşlem ID, Enlem ve Boylam değerlerinden oluşan benzersiz bir anahtar oluşturuyoruz
         const uniqueKey = `${node.code}_${node.transaction_id}_${node.latitude}_${node.longitude}`;
         if (!seen.has(uniqueKey)) {
           seen.add(uniqueKey);
@@ -124,6 +137,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       await fetchNodes();
       setFocusedLocation([formData.latitude, formData.longitude]);
       setFormData({ ...formData, transaction_id: 'TXN-' + Math.floor(Math.random() * 10000) });
+      setIsFormVisible(false); // Kayıt sonrası formu otomatik kapat (Görünüm 2 için)
     } catch (error) {
       alert("Kayıt sırasında hata oluştu!");
     } finally {
@@ -178,7 +192,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         const txnIdx = headers.indexOf('İşlem ID');
 
         if (codeIdx === -1 || latIdx === -1 || lngIdx === -1) {
-          throw new Error("Gerekli sütunlar (Kod, Enlem, Boylam) bulunamadı.");
+          throw new Error("Gerekli sütunlar bulunamadı.");
         }
 
         for (let i = 1; i < rows.length; i++) {
@@ -200,11 +214,11 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             });
           }
         }
-        alert("CSV verileri başarıyla sisteme yüklendi!");
+        alert("CSV verileri sisteme yüklendi!");
         await fetchNodes();
       } catch (error) {
         console.error(error);
-        alert("CSV okunurken hata oluştu! Dosyanın doğru formatta olduğundan emin olun.");
+        alert("Hata oluştu! Dosyanın doğru formatta olduğundan emin olun.");
       } finally {
         setIsImporting(false);
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -218,11 +232,40 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
     ? [nodes[nodes.length-1].latitude, nodes[nodes.length-1].longitude] 
     : defaultCenter;
 
+  // Form Bileşenini tekrar tekrar yazmamak için değişkene atıyoruz
+  const renderForm = () => (
+    <div style={{ padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #ddd' }}>
+      <h3 style={{ marginTop: '0' }}>Manuel Konum Gönder</h3>
+      <form onSubmit={handleAddNode} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <input type="text" placeholder="Araç Kodu" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} style={{ padding: '8px' }} required />
+        <input type="text" placeholder="Açıklama/Etiket" value={formData.label} onChange={e => setFormData({...formData, label: e.target.value})} style={{ padding: '8px' }} required />
+        <input type="number" step="any" placeholder="Enlem (Latitude)" value={formData.latitude} onChange={e => setFormData({...formData, latitude: parseFloat(e.target.value)})} style={{ padding: '8px' }} required />
+        <input type="number" step="any" placeholder="Boylam (Longitude)" value={formData.longitude} onChange={e => setFormData({...formData, longitude: parseFloat(e.target.value)})} style={{ padding: '8px' }} required />
+        <button type="submit" disabled={isSubmitting || isImporting} style={{ padding: '10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: (isSubmitting || isImporting) ? 'not-allowed' : 'pointer' }}>
+          {isSubmitting ? 'Gönderiliyor...' : 'API\'ye Gönder'}
+        </button>
+      </form>
+    </div>
+  );
+
   return (
     <div style={{ padding: '30px', fontFamily: 'sans-serif', maxWidth: '1200px', margin: '0 auto' }}>
+      
+      {/* Header Alanı */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '15px' }}>
         <h2>Hoş Geldiniz, {tenantName}</h2>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+          
+          {/* Parametrik Görünüm Seçici */}
+          <div style={{ display: 'flex', gap: '5px', backgroundColor: '#e9ecef', padding: '4px', borderRadius: '6px' }}>
+            <button onClick={() => setViewMode(1)} style={{ padding: '6px 12px', fontSize: '13px', backgroundColor: viewMode === 1 ? '#fff' : 'transparent', color: viewMode === 1 ? '#000' : '#666', border: 'none', borderRadius: '4px', cursor: 'pointer', boxShadow: viewMode === 1 ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', fontWeight: viewMode === 1 ? 'bold' : 'normal' }}>
+              1. Görünüm
+            </button>
+            <button onClick={() => setViewMode(2)} style={{ padding: '6px 12px', fontSize: '13px', backgroundColor: viewMode === 2 ? '#fff' : 'transparent', color: viewMode === 2 ? '#000' : '#666', border: 'none', borderRadius: '4px', cursor: 'pointer', boxShadow: viewMode === 2 ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', fontWeight: viewMode === 2 ? 'bold' : 'normal' }}>
+              2. Görünüm
+            </button>
+          </div>
+
           <span style={{ fontSize: '12px', color: '#666', backgroundColor: '#f0f0f0', padding: '4px 8px', borderRadius: '4px' }}>
             API Key: {apiKey.substring(0, 8)}...
           </span>
@@ -230,25 +273,35 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         </div>
       </div>
       
-      <div style={{ display: 'flex', gap: '20px', marginTop: '20px', flexWrap: 'wrap' }}>
-        <div style={{ flex: '1', minWidth: '300px', padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #ddd' }}>
-          <h3>Manuel Konum Gönder</h3>
-          <form onSubmit={handleAddNode} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <input type="text" placeholder="Araç Kodu" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} style={{ padding: '8px' }} required />
-            <input type="text" placeholder="Açıklama/Etiket" value={formData.label} onChange={e => setFormData({...formData, label: e.target.value})} style={{ padding: '8px' }} required />
-            <input type="number" step="any" placeholder="Enlem (Latitude)" value={formData.latitude} onChange={e => setFormData({...formData, latitude: parseFloat(e.target.value)})} style={{ padding: '8px' }} required />
-            <input type="number" step="any" placeholder="Boylam (Longitude)" value={formData.longitude} onChange={e => setFormData({...formData, longitude: parseFloat(e.target.value)})} style={{ padding: '8px' }} required />
-            <button type="submit" disabled={isSubmitting || isImporting} style={{ padding: '10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: (isSubmitting || isImporting) ? 'not-allowed' : 'pointer' }}>
-              {isSubmitting ? 'Gönderiliyor...' : 'API\'ye Gönder'}
+      {/* Harita ve Form Alanı (Parametrik Yönlendirme) */}
+      <div style={{ display: 'flex', gap: '20px', marginTop: '20px', flexDirection: viewMode === 1 ? 'row' : 'column' }}>
+        
+        {/* Görünüm 1: Sol Menü Form / Görünüm 2: Gizli veya Butonla Açılan Form */}
+        {viewMode === 1 ? (
+          <div style={{ flex: '1', minWidth: '300px' }}>
+            {renderForm()}
+          </div>
+        ) : (
+          <div>
+            <button 
+              onClick={() => setIsFormVisible(!isFormVisible)} 
+              style={{ padding: '10px 20px', backgroundColor: isFormVisible ? '#dc3545' : '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+              {isFormVisible ? '✖ Formu Kapat' : '➕ Yeni Konum Ekle'}
             </button>
-          </form>
-        </div>
+            {isFormVisible && (
+              <div style={{ marginTop: '15px', maxWidth: '400px' }}>
+                {renderForm()}
+              </div>
+            )}
+          </div>
+        )}
 
-        <div style={{ flex: '2', minWidth: '400px', height: '350px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
+        {/* Harita: Görünüm 1'de sağda, Görünüm 2'de tam satır genişliğinde */}
+        <div style={{ flex: viewMode === 1 ? '2' : 'none', width: viewMode === 1 ? 'auto' : '100%', height: viewMode === 1 ? '350px' : '450px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            
             <MapCenterUpdater center={focusedLocation} />
+            <MapResizer viewMode={viewMode} isFormVisible={isFormVisible} />
 
             {nodes.map(node => (
               node.latitude && node.longitude && (
@@ -261,6 +314,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         </div>
       </div>
 
+      {/* Tablo Alanı */}
       <div style={{ marginTop: '30px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3>Son Konum ve İşlem Verileri</h3>
