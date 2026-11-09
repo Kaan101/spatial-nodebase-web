@@ -62,88 +62,121 @@ function Login({ onLogin }) {
 function Dashboard({ tenantName, apiKey, onLogout }) {
   const [nodes, setNodes] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Yeni form state'i
+  const [formData, setFormData] = useState({
+    code: 'TRK-002', label: 'Test Aracı', transaction_id: 'TXN-' + Math.floor(Math.random() * 10000),
+    latitude: 41.0150, longitude: 28.9850
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const fetchNodes = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/nodes`, {
+        headers: { 'X-API-Key': apiKey }
+      });
+      setNodes(res.data);
+    } catch (error) {
+      console.error("Veri çekme hatası:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchNodes = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/nodes`, {
-          headers: { 'X-API-Key': apiKey }
-        });
-        setNodes(res.data);
-      } catch (error) {
-        console.error("Veri çekme hatası:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchNodes();
   }, [apiKey]);
 
-  // Haritanın merkezini belirleme (Veri yoksa varsayılan İstanbul)
+  // Arayüzden API'ye veri gönderme fonksiyonu
+  const handleAddNode = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        ...formData,
+        event_date: new Date().toISOString()
+      };
+      await axios.post(`${API_URL}/nodes`, payload, {
+        headers: { 'X-API-Key': apiKey }
+      });
+      // Kayıt başarılıysa listeyi ve haritayı yenile
+      await fetchNodes();
+      // Formda yeni bir rastgele TXN ID oluştur
+      setFormData({ ...formData, transaction_id: 'TXN-' + Math.floor(Math.random() * 10000) });
+    } catch (error) {
+      alert("Kayıt sırasında hata oluştu!");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const defaultCenter = [41.0082, 28.9784];
-  const mapCenter = nodes.length > 0 && nodes[0].latitude && nodes[0].longitude 
-    ? [nodes[0].latitude, nodes[0].longitude] 
+  const mapCenter = nodes.length > 0 && nodes[nodes.length-1].latitude 
+    ? [nodes[nodes.length-1].latitude, nodes[nodes.length-1].longitude] 
     : defaultCenter;
 
   return (
     <div style={{ padding: '30px', fontFamily: 'sans-serif', maxWidth: '1200px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '15px' }}>
         <h2>Hoş Geldiniz, {tenantName}</h2>
-        <button onClick={onLogout} style={{ padding: '8px 16px', cursor: 'pointer', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px' }}>Çıkış Yap</button>
+        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+          <span style={{ fontSize: '12px', color: '#666', backgroundColor: '#f0f0f0', padding: '4px 8px', borderRadius: '4px' }}>
+            API Key: {apiKey.substring(0, 8)}...
+          </span>
+          <button onClick={onLogout} style={{ padding: '8px 16px', cursor: 'pointer', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px' }}>Çıkış Yap</button>
+        </div>
       </div>
       
-      <div style={{ marginTop: '20px' }}>
-        <h3>Canlı Filo Takip Haritası</h3>
-        
-        {/* Harita Konteyneri */}
-        <div style={{ height: '400px', width: '100%', marginBottom: '30px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
+      <div style={{ display: 'flex', gap: '20px', marginTop: '20px', flexWrap: 'wrap' }}>
+        {/* Veri Ekleme Formu */}
+        <div style={{ flex: '1', minWidth: '300px', padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #ddd' }}>
+          <h3>Manuel Konum Gönder (Test)</h3>
+          <form onSubmit={handleAddNode} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <input type="text" placeholder="Araç Kodu" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} style={{ padding: '8px' }} required />
+            <input type="text" placeholder="Etiket" value={formData.label} onChange={e => setFormData({...formData, label: e.target.value})} style={{ padding: '8px' }} required />
+            <input type="number" step="any" placeholder="Enlem (Latitude)" value={formData.latitude} onChange={e => setFormData({...formData, latitude: parseFloat(e.target.value)})} style={{ padding: '8px' }} required />
+            <input type="number" step="any" placeholder="Boylam (Longitude)" value={formData.longitude} onChange={e => setFormData({...formData, longitude: parseFloat(e.target.value)})} style={{ padding: '8px' }} required />
+            <button type="submit" disabled={isSubmitting} style={{ padding: '10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
+              {isSubmitting ? 'Gönderiliyor...' : 'API\'ye Gönder'}
+            </button>
+          </form>
+        </div>
+
+        {/* Harita */}
+        <div style={{ flex: '2', minWidth: '400px', height: '350px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            />
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             {nodes.map(node => (
               node.latitude && node.longitude && (
                 <Marker key={node.id} position={[node.latitude, node.longitude]}>
-                  <Popup>
-                    <strong>{node.code}</strong> <br/>
-                    {node.label} <br/>
-                    İşlem: {node.transaction_id} <br/>
-                    Tarih: {new Date(node.event_date).toLocaleString('tr-TR')}
-                  </Popup>
+                  <Popup><strong>{node.code}</strong><br/>{node.label}<br/>{new Date(node.event_date).toLocaleTimeString('tr-TR')}</Popup>
                 </Marker>
               )
             ))}
           </MapContainer>
         </div>
+      </div>
 
+      <div style={{ marginTop: '30px' }}>
         <h3>Son Konum ve İşlem Verileri</h3>
-        {loading ? (
-          <p>Veriler buluttan yükleniyor...</p>
-        ) : nodes.length === 0 ? (
-          <p>Henüz sistemde hiç kayıtlı konum verisi yok.</p>
-        ) : (
+        {loading ? <p>Yükleniyor...</p> : nodes.length === 0 ? <p>Kayıt yok.</p> : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8f9fa', textAlign: 'left' }}>
                   <th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Tarih</th>
                   <th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Kod</th>
-                  <th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Etiket</th>
                   <th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>İşlem ID</th>
-                  <th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Enlem</th>
-                  <th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Boylam</th>
+                  <th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Koordinat</th>
                 </tr>
               </thead>
               <tbody>
                 {nodes.map(node => (
                   <tr key={node.id} style={{ borderBottom: '1px solid #eee' }}>
                     <td style={{ padding: '12px' }}>{new Date(node.event_date).toLocaleString('tr-TR')}</td>
-                    <td style={{ padding: '12px' }}><strong>{node.code}</strong></td>
-                    <td style={{ padding: '12px' }}>{node.label}</td>
+                    <td style={{ padding: '12px' }}><strong>{node.code}</strong><br/><small>{node.label}</small></td>
                     <td style={{ padding: '12px' }}>{node.transaction_id}</td>
-                    <td style={{ padding: '12px' }}>{node.latitude}</td>
-                    <td style={{ padding: '12px' }}>{node.longitude}</td>
+                    <td style={{ padding: '12px' }}>{node.latitude}, {node.longitude}</td>
                   </tr>
                 ))}
               </tbody>
