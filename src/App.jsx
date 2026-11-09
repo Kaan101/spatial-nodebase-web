@@ -268,18 +268,14 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       
       <div style={{ display: 'flex', gap: '20px', marginTop: '20px', flexDirection: viewMode === 1 ? 'row' : 'column' }}>
         
+        {/* 1. Görünüm Formu (Solda) */}
         {viewMode === 1 && (
           <div style={{ flex: '1', minWidth: '300px' }}>
             {renderForm()}
           </div>
         )}
 
-        {viewMode === 2 && isFormVisible && (
-          <div style={{ maxWidth: '400px' }}>
-            {renderForm()}
-          </div>
-        )}
-
+        {/* Harita */}
         <div style={{ flex: viewMode === 1 ? '2' : 'none', width: viewMode === 1 ? 'auto' : '100%', height: viewMode === 1 ? '350px' : '450px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -295,6 +291,13 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             ))}
           </MapContainer>
         </div>
+
+        {/* 2. Görünüm Formu (Haritanın Altında) */}
+        {viewMode === 2 && isFormVisible && (
+          <div style={{ maxWidth: '400px' }}>
+            {renderForm()}
+          </div>
+        )}
       </div>
 
       <div style={{ marginTop: '30px' }}>
@@ -302,7 +305,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
           <h3>Son Konum ve İşlem Verileri</h3>
           <div style={{ display: 'flex', gap: '10px' }}>
             
-            {/* Outline Stilli, Transparan Yeni Konum Ekle Butonu */}
             {viewMode === 2 && (
               <button 
                 onClick={() => setIsFormVisible(!isFormVisible)} 
