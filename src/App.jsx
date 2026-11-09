@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// React-Leaflet için standart pin (ikon) sorununun Vite özelindeki çözümü
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 let DefaultIcon = L.icon({
@@ -18,6 +17,15 @@ let DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon;
 
 const API_URL = import.meta.env.VITE_API_URL;
+
+// Harita merkezini dinamik olarak değiştirmek için yardımcı bileşen
+function MapCenterUpdater({ center }) {
+  const map = useMap();
+  if (center) {
+    map.flyTo(center, 16, { duration: 1.5 }); // 16 zoom seviyesi ile yumuşak geçiş
+  }
+  return null;
+}
 
 function Login({ onLogin }) {
   const [key, setKey] = useState('');
@@ -62,8 +70,8 @@ function Login({ onLogin }) {
 function Dashboard({ tenantName, apiKey, onLogout }) {
   const [nodes, setNodes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [focusedLocation, setFocusedLocation] = useState(null); // Tıklanan satırın koordinatını tutar
   
-  // Yeni form state'i
   const [formData, setFormData] = useState({
     code: 'TRK-002', label: 'Test Aracı', transaction_id: 'TXN-' + Math.floor(Math.random() * 10000),
     latitude: 41.0150, longitude: 28.9850
@@ -87,7 +95,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
     fetchNodes();
   }, [apiKey]);
 
-  // Arayüzden API'ye veri gönderme fonksiyonu
   const handleAddNode = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -99,9 +106,9 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       await axios.post(`${API_URL}/nodes`, payload, {
         headers: { 'X-API-Key': apiKey }
       });
-      // Kayıt başarılıysa listeyi ve haritayı yenile
       await fetchNodes();
-      // Formda yeni bir rastgele TXN ID oluştur
+      // Yeni eklenen konuma otomatik odaklan
+      setFocusedLocation([formData.latitude, formData.longitude]);
       setFormData({ ...formData, transaction_id: 'TXN-' + Math.floor(Math.random() * 10000) });
     } catch (error) {
       alert("Kayıt sırasında hata oluştu!");
@@ -128,9 +135,8 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       </div>
       
       <div style={{ display: 'flex', gap: '20px', marginTop: '20px', flexWrap: 'wrap' }}>
-        {/* Veri Ekleme Formu */}
         <div style={{ flex: '1', minWidth: '300px', padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #ddd' }}>
-          <h3>Manuel Konum Gönder (Test)</h3>
+          <h3>Manuel Konum Gönder</h3>
           <form onSubmit={handleAddNode} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <input type="text" placeholder="Araç Kodu" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} style={{ padding: '8px' }} required />
             <input type="text" placeholder="Etiket" value={formData.label} onChange={e => setFormData({...formData, label: e.target.value})} style={{ padding: '8px' }} required />
@@ -142,10 +148,13 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
           </form>
         </div>
 
-        {/* Harita */}
         <div style={{ flex: '2', minWidth: '400px', height: '350px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            
+            {/* Odaklayıcı bileşeni haritanın içine yerleştiriyoruz */}
+            <MapCenterUpdater center={focusedLocation} />
+
             {nodes.map(node => (
               node.latitude && node.longitude && (
                 <Marker key={node.id} position={[node.latitude, node.longitude]}>
@@ -161,22 +170,28 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         <h3>Son Konum ve İşlem Verileri</h3>
         {loading ? <p>Yükleniyor...</p> : nodes.length === 0 ? <p>Kayıt yok.</p> : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontSize: '9px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8f9fa', textAlign: 'left' }}>
-                  <th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Tarih</th>
-                  <th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Kod</th>
-                  <th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>İşlem ID</th>
-                  <th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Koordinat</th>
+                  <th style={{ padding: '8px', borderBottom: '2px solid #ddd' }}>Tarih</th>
+                  <th style={{ padding: '8px', borderBottom: '2px solid #ddd' }}>Kod</th>
+                  <th style={{ padding: '8px', borderBottom: '2px solid #ddd' }}>İşlem ID</th>
+                  <th style={{ padding: '8px', borderBottom: '2px solid #ddd' }}>Koordinat</th>
                 </tr>
               </thead>
               <tbody>
                 {nodes.map(node => (
-                  <tr key={node.id} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '12px' }}>{new Date(node.event_date).toLocaleString('tr-TR')}</td>
-                    <td style={{ padding: '12px' }}><strong>{node.code}</strong><br/><small>{node.label}</small></td>
-                    <td style={{ padding: '12px' }}>{node.transaction_id}</td>
-                    <td style={{ padding: '12px' }}>{node.latitude}, {node.longitude}</td>
+                  <tr 
+                    key={node.id} 
+                    onClick={() => setFocusedLocation([node.latitude, node.longitude])} // Satıra tıklanınca konumu ayarla
+                    style={{ borderBottom: '1px solid #eee', cursor: 'pointer' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f1f1'} // Üzerine gelince hover efekti
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <td style={{ padding: '8px' }}>{new Date(node.event_date).toLocaleString('tr-TR')}</td>
+                    <td style={{ padding: '8px' }}><strong>{node.code}</strong><br/>{node.label}</td>
+                    <td style={{ padding: '8px' }}>{node.transaction_id}</td>
+                    <td style={{ padding: '8px' }}>{node.latitude}, {node.longitude}</td>
                   </tr>
                 ))}
               </tbody>
