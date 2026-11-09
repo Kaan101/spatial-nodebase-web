@@ -121,8 +121,17 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
     }
   };
 
+  // 3 Saniyede bir asenkron veri güncelleme (Polling) mekanizması
   useEffect(() => {
-    fetchNodes();
+    if (!apiKey) return;
+    
+    fetchNodes(); // İlk açılışta hemen çek
+
+    const intervalId = setInterval(() => {
+      fetchNodes();
+    }, 3000); // Her 3 sn'de bir arka planda yenile
+
+    return () => clearInterval(intervalId); // Temizlik
   }, [apiKey]);
 
   const handleAddNode = async (e) => {
@@ -282,7 +291,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       {/* MAIN CONTENT AREA */}
       {viewMode === 3 ? (
         
-        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE ÇOK DARALTILMIŞ İKİ SATIRLI LİSTE */
+        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE 2 SATIRLI LİSTE */
         <div style={{ position: 'relative', width: '100%', minHeight: '600px', height: 'calc(100vh - 120px)', marginTop: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           
           <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%', zIndex: 1 }}>
@@ -308,7 +317,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             </button>
           )}
 
-          {/* Sol Panel (Drawer) - Satır Araları Daraltılmış */}
+          {/* Sol Panel (Drawer) */}
           {isListOpen && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: listWidth, height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.98)', zIndex: 1000, display: 'flex', flexDirection: 'column', boxShadow: '4px 0 15px rgba(0,0,0,0.2)', backdropFilter: 'blur(5px)', transition: 'width 0.3s ease' }}>
               
@@ -345,7 +354,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                     key={node.id} 
                     onClick={() => setFocusedLocation([node.latitude, node.longitude])}
                     style={{ 
-                      padding: '6px 10px', // Dikey dolgu daraltıldı
+                      padding: '6px 10px', 
                       backgroundColor: 'transparent', 
                       cursor: 'pointer', 
                       borderBottom: '1px solid #e2e8f0', 
@@ -358,7 +367,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                       e.currentTarget.style.backgroundColor = 'transparent';
                     }}
                   >
-                    {/* 1. Satır: Kod ve Tarih (marginBottom sıfırlandı/daraltıldı) */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1px' }}>
                       <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a' }}>
                         {node.code}
@@ -368,7 +376,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                       </span>
                     </div>
 
-                    {/* 2. Satır: Açıklama ve İşlem ID */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: '11px', color: '#334155', fontWeight: 'normal', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
                         {node.label}
