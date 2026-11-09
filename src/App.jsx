@@ -87,7 +87,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
   
   const [isListOpen, setIsListOpen] = useState(false); 
   const [searchTerm, setSearchTerm] = useState(''); 
-  const [listWidth, setListWidth] = useState('25%'); // Başlangıç 1/4 (%25)
+  const [listWidth, setListWidth] = useState('25%'); 
 
   const [formData, setFormData] = useState({
     code: 'TRK-002', label: 'Test Aracı', transaction_id: 'TXN-' + Math.floor(Math.random() * 10000),
@@ -282,7 +282,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       {/* MAIN CONTENT AREA */}
       {viewMode === 3 ? (
         
-        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE TEK İŞARETLİ ( > veya < ) SOL PANEL */
+        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE ÇERÇEVESİZ TEK ÇİZGİLİ KOMPAKT LİSTE */
         <div style={{ position: 'relative', width: '100%', minHeight: '600px', height: 'calc(100vh - 120px)', marginTop: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           
           <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%', zIndex: 1 }}>
@@ -308,7 +308,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             </button>
           )}
 
-          {/* Sol Panel (Drawer) - Etiketsiz Ok İşaretli Genişlik Geçişi */}
+          {/* Sol Panel (Drawer) - Çerçevesiz, Yatay Çizgi Ayraçlı Liste */}
           {isListOpen && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: listWidth, height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.98)', zIndex: 1000, display: 'flex', flexDirection: 'column', boxShadow: '4px 0 15px rgba(0,0,0,0.2)', backdropFilter: 'blur(5px)', transition: 'width 0.3s ease' }}>
               
@@ -322,7 +322,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                     style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '12px' }} 
                   />
                   
-                  {/* Etiketsiz Sadece İşaret ( > veya < ) Düğmesi */}
                   <button 
                     onClick={() => setListWidth(prev => prev === '25%' ? '40%':'25%')} 
                     title="Genişliği Değiştir"
@@ -338,7 +337,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                 </div>
               </div>
 
-              <div style={{ flex: 1, overflowY: 'auto', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '0 4px', display: 'flex', flexDirection: 'column' }}>
                 {filteredNodes.length === 0 ? <p style={{ textAlign: 'center', color: '#666', marginTop: '20px', fontSize: '12px' }}>Kayıt bulunamadı.</p> : null}
                 
                 {filteredNodes.map(node => (
@@ -346,26 +345,22 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                     key={node.id} 
                     onClick={() => setFocusedLocation([node.latitude, node.longitude])}
                     style={{ 
-                      padding: '10px 12px', 
-                      backgroundColor: '#fff', 
-                      borderRadius: '8px', 
+                      padding: '8px 10px', 
+                      backgroundColor: 'transparent', 
                       cursor: 'pointer', 
-                      border: '1px solid #e2e8f0',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                      transition: 'all 0.2s ease'
+                      borderBottom: '1px solid #e2e8f0', // Tek satır çizgisi
+                      transition: 'background-color 0.15s ease'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f8fafc';
-                      e.currentTarget.style.borderColor = '#cbd5e1';
+                      e.currentTarget.style.backgroundColor = '#f1f5f9';
                     }} 
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#fff';
-                      e.currentTarget.style.borderColor = '#e2e8f0';
+                      e.currentTarget.style.backgroundColor = 'transparent';
                     }}
                   >
                     {/* 1. Satır: Kod ve Tarih */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a', backgroundColor: '#f1f5f9', padding: '2px 5px', borderRadius: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a' }}>
                         {node.code}
                       </span>
                       <span style={{ fontSize: '10px', color: '#64748b' }}>
@@ -375,7 +370,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
 
                     {/* 2. Satır: Açıklama ve İşlem ID */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '11px', color: '#334155', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
+                      <span style={{ fontSize: '11px', color: '#334155', fontWeight: 'normal', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
                         {node.label}
                       </span>
                       <span style={{ fontSize: '9px', color: '#94a3b8', fontFamily: 'monospace' }}>
