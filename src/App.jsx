@@ -84,7 +84,21 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       const res = await axios.get(`${API_URL}/nodes`, {
         headers: { 'X-API-Key': apiKey }
       });
-      setNodes(res.data);
+      
+      // Tekil (Unique) kayıtları filtreleme
+      const uniqueNodes = [];
+      const seen = new Set();
+      
+      res.data.forEach(node => {
+        // Kod, İşlem ID, Enlem ve Boylam değerlerinden oluşan benzersiz bir anahtar oluşturuyoruz
+        const uniqueKey = `${node.code}_${node.transaction_id}_${node.latitude}_${node.longitude}`;
+        if (!seen.has(uniqueKey)) {
+          seen.add(uniqueKey);
+          uniqueNodes.push(node);
+        }
+      });
+
+      setNodes(uniqueNodes);
     } catch (error) {
       console.error("Veri çekme hatası:", error);
     } finally {
@@ -117,10 +131,9 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
     }
   };
 
-  // NATIVE CSV İNDİRME (Kütüphanesiz)
   const handleExportCSV = () => {
     const headers = ['Tarih', 'Kod', 'Açıklama', 'İşlem ID', 'Enlem', 'Boylam'];
-    const csvRows = [headers.join(',')]; // Başlık satırı
+    const csvRows = [headers.join(',')];
 
     nodes.forEach(node => {
       const row = [
@@ -131,12 +144,10 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         node.latitude,
         node.longitude
       ];
-      // Verilerde virgül olma ihtimaline karşı tırnak içine alıyoruz
       csvRows.push(row.map(v => `"${v}"`).join(','));
     });
 
     const csvString = csvRows.join('\n');
-    // UTF-8 BOM ekleyerek Excel'in Türkçe karakterleri düzgün tanımasını sağlıyoruz
     const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -147,7 +158,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
     document.body.removeChild(link);
   };
 
-  // NATIVE CSV İÇERİ AKTARMA (Kütüphanesiz)
   const handleImportCSV = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -160,7 +170,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         const rows = text.split('\n');
         if (rows.length < 2) throw new Error("Veri bulunamadı.");
 
-        // Başlıkları al ve tırnakları temizle
         const headers = rows[0].split(',').map(h => h.replace(/"/g, '').trim());
         const codeIdx = headers.indexOf('Kod');
         const labelIdx = headers.indexOf('Açıklama');
@@ -172,11 +181,9 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
           throw new Error("Gerekli sütunlar (Kod, Enlem, Boylam) bulunamadı.");
         }
 
-        // Satırları tek tek API'ye gönder
         for (let i = 1; i < rows.length; i++) {
-          if (!rows[i].trim()) continue; // Boş satırları atla
+          if (!rows[i].trim()) continue;
           
-          // Satırı virgüllerden böl ve tırnakları temizle
           const cols = rows[i].split(',').map(c => c.replace(/"/g, '').trim());
           
           if (cols[codeIdx] && cols[latIdx] && cols[lngIdx]) {
@@ -203,7 +210,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         if (fileInputRef.current) fileInputRef.current.value = "";
       }
     };
-    reader.readAsText(file); // Metin olarak oku
+    reader.readAsText(file);
   };
 
   const defaultCenter = [41.0082, 28.9784];
