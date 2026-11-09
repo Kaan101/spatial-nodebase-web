@@ -22,7 +22,8 @@ const API_URL = import.meta.env.VITE_API_URL;
 function MapCenterUpdater({ center }) {
   const map = useMap();
   if (center) {
-    map.flyTo(center, 16, { duration: 1.5 }); // 16 zoom seviyesi ile yumuşak geçiş
+    // Zoom seviyesini 16'dan 14'e düşürdük, daha geniş bir açıdan odaklanacak
+    map.flyTo(center, 14, { duration: 1.5 }); 
   }
   return null;
 }
@@ -70,7 +71,7 @@ function Login({ onLogin }) {
 function Dashboard({ tenantName, apiKey, onLogout }) {
   const [nodes, setNodes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [focusedLocation, setFocusedLocation] = useState(null); // Tıklanan satırın koordinatını tutar
+  const [focusedLocation, setFocusedLocation] = useState(null); 
   
   const [formData, setFormData] = useState({
     code: 'TRK-002', label: 'Test Aracı', transaction_id: 'TXN-' + Math.floor(Math.random() * 10000),
@@ -107,7 +108,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         headers: { 'X-API-Key': apiKey }
       });
       await fetchNodes();
-      // Yeni eklenen konuma otomatik odaklan
       setFocusedLocation([formData.latitude, formData.longitude]);
       setFormData({ ...formData, transaction_id: 'TXN-' + Math.floor(Math.random() * 10000) });
     } catch (error) {
@@ -139,7 +139,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
           <h3>Manuel Konum Gönder</h3>
           <form onSubmit={handleAddNode} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <input type="text" placeholder="Araç Kodu" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} style={{ padding: '8px' }} required />
-            <input type="text" placeholder="Etiket" value={formData.label} onChange={e => setFormData({...formData, label: e.target.value})} style={{ padding: '8px' }} required />
+            <input type="text" placeholder="Açıklama/Etiket" value={formData.label} onChange={e => setFormData({...formData, label: e.target.value})} style={{ padding: '8px' }} required />
             <input type="number" step="any" placeholder="Enlem (Latitude)" value={formData.latitude} onChange={e => setFormData({...formData, latitude: parseFloat(e.target.value)})} style={{ padding: '8px' }} required />
             <input type="number" step="any" placeholder="Boylam (Longitude)" value={formData.longitude} onChange={e => setFormData({...formData, longitude: parseFloat(e.target.value)})} style={{ padding: '8px' }} required />
             <button type="submit" disabled={isSubmitting} style={{ padding: '10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
@@ -152,7 +152,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
           <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             
-            {/* Odaklayıcı bileşeni haritanın içine yerleştiriyoruz */}
             <MapCenterUpdater center={focusedLocation} />
 
             {nodes.map(node => (
@@ -173,64 +172,4 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontSize: '9px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8f9fa', textAlign: 'left' }}>
-                  <th style={{ padding: '8px', borderBottom: '2px solid #ddd' }}>Tarih</th>
-                  <th style={{ padding: '8px', borderBottom: '2px solid #ddd' }}>Kod</th>
-                  <th style={{ padding: '8px', borderBottom: '2px solid #ddd' }}>İşlem ID</th>
-                  <th style={{ padding: '8px', borderBottom: '2px solid #ddd' }}>Koordinat</th>
-                </tr>
-              </thead>
-              <tbody>
-                {nodes.map(node => (
-                  <tr 
-                    key={node.id} 
-                    onClick={() => setFocusedLocation([node.latitude, node.longitude])} // Satıra tıklanınca konumu ayarla
-                    style={{ borderBottom: '1px solid #eee', cursor: 'pointer' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f1f1'} // Üzerine gelince hover efekti
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <td style={{ padding: '8px' }}>{new Date(node.event_date).toLocaleString('tr-TR')}</td>
-                    <td style={{ padding: '8px' }}><strong>{node.code}</strong><br/>{node.label}</td>
-                    <td style={{ padding: '8px' }}>{node.transaction_id}</td>
-                    <td style={{ padding: '8px' }}>{node.latitude}, {node.longitude}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-export default function App() {
-  const [apiKey, setApiKey] = useState(localStorage.getItem('apiKey') || '');
-  const [tenantName, setTenantName] = useState(localStorage.getItem('tenantName') || '');
-
-  const handleLogin = (key, name) => {
-    setApiKey(key);
-    setTenantName(name);
-    localStorage.setItem('apiKey', key);
-    localStorage.setItem('tenantName', name);
-  };
-
-  const handleLogout = () => {
-    setApiKey('');
-    setTenantName('');
-    localStorage.removeItem('apiKey');
-    localStorage.removeItem('tenantName');
-  };
-
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={
-          apiKey ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />
-        } />
-        <Route path="/dashboard" element={
-          apiKey ? <Dashboard tenantName={tenantName} apiKey={apiKey} onLogout={handleLogout} /> : <Navigate to="/" />
-        } />
-      </Routes>
-    </BrowserRouter>
-  );
-}
+                  <th style={{ padding: '
