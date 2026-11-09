@@ -26,13 +26,13 @@ function MapCenterUpdater({ center }) {
   return null;
 }
 
-function MapResizer({ viewMode, isFormVisible, isListOpen }) {
+function MapResizer({ viewMode, isFormVisible, isListOpen, listWidth }) {
   const map = useMap();
   useEffect(() => {
     setTimeout(() => {
       map.invalidateSize();
     }, 200); 
-  }, [viewMode, isFormVisible, isListOpen, map]);
+  }, [viewMode, isFormVisible, isListOpen, listWidth, map]);
   return null;
 }
 
@@ -87,6 +87,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
   
   const [isListOpen, setIsListOpen] = useState(false); 
   const [searchTerm, setSearchTerm] = useState(''); 
+  const [listWidth, setListWidth] = useState('25%'); // Varsayılan 1/4 (%25)
 
   const [formData, setFormData] = useState({
     code: 'TRK-002', label: 'Test Aracı', transaction_id: 'TXN-' + Math.floor(Math.random() * 10000),
@@ -281,13 +282,13 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       {/* MAIN CONTENT AREA */}
       {viewMode === 3 ? (
         
-        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE 1/4 GENİŞLİĞİNDE SOL PANEL */
+        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE AYARLANABİLİR GENİŞLİKTE SOL PANEL */
         <div style={{ position: 'relative', width: '100%', minHeight: '600px', height: 'calc(100vh - 120px)', marginTop: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           
           <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%', zIndex: 1 }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapCenterUpdater center={focusedLocation} />
-            <MapResizer viewMode={viewMode} isFormVisible={isFormVisible} isListOpen={isListOpen} />
+            <MapResizer viewMode={viewMode} isFormVisible={isFormVisible} isListOpen={isListOpen} listWidth={listWidth} />
 
             {nodes.map(node => (
               node.latitude && node.longitude && (
@@ -307,23 +308,41 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             </button>
           )}
 
-          {/* Sol Panel (Drawer) - Haritanın 1/4'i (%25) genişliğinde */}
+          {/* Sol Panel (Drawer) - Genişliği Dinamik Ayarlanabilir */}
           {isListOpen && (
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '25%', height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.98)', zIndex: 1000, display: 'flex', flexDirection: 'column', boxShadow: '4px 0 15px rgba(0,0,0,0.2)', backdropFilter: 'blur(5px)' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: listWidth, height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.98)', zIndex: 1000, display: 'flex', flexDirection: 'column', boxShadow: '4px 0 15px rgba(0,0,0,0.2)', backdropFilter: 'blur(5px)', transition: 'width 0.3s ease' }}>
               
-              <div style={{ padding: '12px', borderBottom: '1px solid #ddd', display: 'flex', gap: '8px', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
-                <input 
-                  type="text" 
-                  placeholder="Ara..." 
-                  value={searchTerm} 
-                  onChange={e => setSearchTerm(e.target.value)} 
-                  style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '12px' }} 
-                />
-                <button 
-                  onClick={() => setIsListOpen(false)} 
-                  style={{ padding: '8px 12px', cursor: 'pointer', border: 'none', backgroundColor: '#6c757d', color: 'white', borderRadius: '6px', fontWeight: 'bold' }}>
-                  ✕
-                </button>
+              <div style={{ padding: '12px', borderBottom: '1px solid #ddd', display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: '#f8f9fa' }}>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Ara..." 
+                    value={searchTerm} 
+                    onChange={e => setSearchTerm(e.target.value)} 
+                    style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '12px' }} 
+                  />
+                  {/* Genişlik Ayar Butonları */}
+                  <div style={{ display: 'flex', gap: '2px', backgroundColor: '#e2e8f0', padding: '2px', borderRadius: '4px' }}>
+                    <button 
+                      onClick={() => setListWidth('25%')} 
+                      title="1/4 Genişlik"
+                      style={{ padding: '4px 6px', fontSize: '10px', backgroundColor: listWidth === '25%' ? '#fff' : 'transparent', border: 'none', borderRadius: '3px', cursor: 'pointer', fontWeight: 'bold' }}>
+                      1/4
+                    </button>
+                    <button 
+                      onClick={() => setListWidth('40%')} 
+                      title="2/5 Genişlik"
+                      style={{ padding: '4px 6px', fontSize: '10px', backgroundColor: listWidth === '40%' ? '#fff' : 'transparent', border: 'none', borderRadius: '3px', cursor: 'pointer', fontWeight: 'bold' }}>
+                      2/5
+                    </button>
+                  </div>
+
+                  <button 
+                    onClick={() => setIsListOpen(false)} 
+                    style={{ padding: '6px 10px', cursor: 'pointer', border: 'none', backgroundColor: '#6c757d', color: 'white', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px' }}>
+                    ✕
+                  </button>
+                </div>
               </div>
 
               <div style={{ flex: 1, overflowY: 'auto', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -363,7 +382,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
 
                     {/* 2. Satır: Açıklama ve İşlem ID */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '11px', color: '#334155', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '110px' }}>
+                      <span style={{ fontSize: '11px', color: '#334155', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '130px' }}>
                         {node.label}
                       </span>
                       <span style={{ fontSize: '9px', color: '#94a3b8', fontFamily: 'monospace' }}>
@@ -399,7 +418,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
               <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%', zIndex: 1 }}>
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 <MapCenterUpdater center={focusedLocation} />
-                <MapResizer viewMode={viewMode} isFormVisible={isFormVisible} isListOpen={isListOpen} />
+                <MapResizer viewMode={viewMode} isFormVisible={isFormVisible} isListOpen={isListOpen} listWidth={listWidth} />
 
                 {nodes.map(node => (
                   node.latitude && node.longitude && (
