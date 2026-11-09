@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-// BrowserRouter yerine HashRouter kullanıyoruz (Çökme sorununu kökten çözer)
+import { useState, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
@@ -22,7 +21,6 @@ const API_URL = import.meta.env.VITE_API_URL;
 function MapCenterUpdater({ center }) {
   const map = useMap();
   if (center) {
-    // Odaklanma zoom seviyesi 6'ya düşürüldü
     map.flyTo(center, 6, { duration: 1.5 }); 
   }
   return null;
@@ -72,12 +70,14 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
   const [nodes, setNodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [focusedLocation, setFocusedLocation] = useState(null); 
+  const fileInputRef = useRef(null);
   
   const [formData, setFormData] = useState({
     code: 'TRK-002', label: 'Test Aracı', transaction_id: 'TXN-' + Math.floor(Math.random() * 10000),
     latitude: 41.0150, longitude: 28.9850
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const fetchNodes = async () => {
     try {
@@ -117,6 +117,95 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
     }
   };
 
+  // NATIVE CSV İNDİRME (Kütüphanesiz)
+  const handleExportCSV = () => {
+    const headers = ['Tarih', 'Kod', 'Açıklama', 'İşlem ID', 'Enlem', 'Boylam'];
+    const csvRows = [headers.join(',')]; // Başlık satırı
+
+    nodes.forEach(node => {
+      const row = [
+        new Date(node.event_date).toLocaleString('tr-TR'),
+        node.code,
+        node.label,
+        node.transaction_id,
+        node.latitude,
+        node.longitude
+      ];
+      // Verilerde virgül olma ihtimaline karşı tırnak içine alıyoruz
+      csvRows.push(row.map(v => `"${v}"`).join(','));
+    });
+
+    const csvString = csvRows.join('\n');
+    // UTF-8 BOM ekleyerek Excel'in Türkçe karakterleri düzgün tanımasını sağlıyoruz
+    const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'Spatial_NodeBase_Veriler.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // NATIVE CSV İÇERİ AKTARMA (Kütüphanesiz)
+  const handleImportCSV = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const text = evt.target.result;
+        const rows = text.split('\n');
+        if (rows.length < 2) throw new Error("Veri bulunamadı.");
+
+        // Başlıkları al ve tırnakları temizle
+        const headers = rows[0].split(',').map(h => h.replace(/"/g, '').trim());
+        const codeIdx = headers.indexOf('Kod');
+        const labelIdx = headers.indexOf('Açıklama');
+        const latIdx = headers.indexOf('Enlem');
+        const lngIdx = headers.indexOf('Boylam');
+        const txnIdx = headers.indexOf('İşlem ID');
+
+        if (codeIdx === -1 || latIdx === -1 || lngIdx === -1) {
+          throw new Error("Gerekli sütunlar (Kod, Enlem, Boylam) bulunamadı.");
+        }
+
+        // Satırları tek tek API'ye gönder
+        for (let i = 1; i < rows.length; i++) {
+          if (!rows[i].trim()) continue; // Boş satırları atla
+          
+          // Satırı virgüllerden böl ve tırnakları temizle
+          const cols = rows[i].split(',').map(c => c.replace(/"/g, '').trim());
+          
+          if (cols[codeIdx] && cols[latIdx] && cols[lngIdx]) {
+            const payload = {
+              code: cols[codeIdx],
+              label: labelIdx !== -1 ? cols[labelIdx] : 'CSV İçeri Aktarım',
+              latitude: parseFloat(cols[latIdx]),
+              longitude: parseFloat(cols[lngIdx]),
+              transaction_id: (txnIdx !== -1 && cols[txnIdx]) ? cols[txnIdx] : 'TXN-CSV-' + Math.floor(Math.random() * 10000),
+              event_date: new Date().toISOString()
+            };
+            await axios.post(`${API_URL}/nodes`, payload, {
+              headers: { 'X-API-Key': apiKey }
+            });
+          }
+        }
+        alert("CSV verileri başarıyla sisteme yüklendi!");
+        await fetchNodes();
+      } catch (error) {
+        console.error(error);
+        alert("CSV okunurken hata oluştu! Dosyanın doğru formatta olduğundan emin olun.");
+      } finally {
+        setIsImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    };
+    reader.readAsText(file); // Metin olarak oku
+  };
+
   const defaultCenter = [41.0082, 28.9784];
   const mapCenter = nodes.length > 0 && nodes[nodes.length-1].latitude 
     ? [nodes[nodes.length-1].latitude, nodes[nodes.length-1].longitude] 
@@ -142,14 +231,14 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             <input type="text" placeholder="Açıklama/Etiket" value={formData.label} onChange={e => setFormData({...formData, label: e.target.value})} style={{ padding: '8px' }} required />
             <input type="number" step="any" placeholder="Enlem (Latitude)" value={formData.latitude} onChange={e => setFormData({...formData, latitude: parseFloat(e.target.value)})} style={{ padding: '8px' }} required />
             <input type="number" step="any" placeholder="Boylam (Longitude)" value={formData.longitude} onChange={e => setFormData({...formData, longitude: parseFloat(e.target.value)})} style={{ padding: '8px' }} required />
-            <button type="submit" disabled={isSubmitting} style={{ padding: '10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
+            <button type="submit" disabled={isSubmitting || isImporting} style={{ padding: '10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: (isSubmitting || isImporting) ? 'not-allowed' : 'pointer' }}>
               {isSubmitting ? 'Gönderiliyor...' : 'API\'ye Gönder'}
             </button>
           </form>
         </div>
 
         <div style={{ flex: '2', minWidth: '400px', height: '350px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
-            <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }}>
+          <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             
             <MapCenterUpdater center={focusedLocation} />
@@ -166,10 +255,34 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       </div>
 
       <div style={{ marginTop: '30px' }}>
-        <h3>Son Konum ve İşlem Verileri</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3>Son Konum ve İşlem Verileri</h3>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <input 
+              type="file" 
+              accept=".csv" 
+              onChange={handleImportCSV} 
+              ref={fileInputRef}
+              style={{ display: 'none' }} 
+            />
+            <button 
+              onClick={() => fileInputRef.current.click()} 
+              disabled={isImporting}
+              style={{ padding: '6px 12px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', cursor: isImporting ? 'not-allowed' : 'pointer', fontSize: '12px' }}
+            >
+              {isImporting ? 'Yükleniyor...' : '⬆️ CSV Yükle'}
+            </button>
+            <button 
+              onClick={handleExportCSV} 
+              style={{ padding: '6px 12px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+            >
+              ⬇️ CSV İndir
+            </button>
+          </div>
+        </div>
+        
         {loading ? <p>Yükleniyor...</p> : nodes.length === 0 ? <p>Kayıt yok.</p> : (
-          <div style={{ overflowX: 'auto' }}>
-            {/* Tablo kırılmasını engellemek için beyaz boşluk ve nowrap kuralı eklendi */}
+          <div style={{ overflowX: 'auto', marginTop: '10px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontSize: '11px', whiteSpace: 'nowrap' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8f9fa', textAlign: 'left' }}>
