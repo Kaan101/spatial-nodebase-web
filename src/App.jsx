@@ -282,7 +282,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       {/* MAIN CONTENT AREA */}
       {viewMode === 3 ? (
         
-        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE TEK TUŞLA DEĞİŞEN SOL PANEL */
+        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE TEK İŞARETLİ ( > veya < ) SOL PANEL */
         <div style={{ position: 'relative', width: '100%', minHeight: '600px', height: 'calc(100vh - 120px)', marginTop: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           
           <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%', zIndex: 1 }}>
@@ -308,7 +308,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             </button>
           )}
 
-          {/* Sol Panel (Drawer) - Tek Düğmeli Genişlik Geçişi */}
+          {/* Sol Panel (Drawer) - Etiketsiz Ok İşaretli Genişlik Geçişi */}
           {isListOpen && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: listWidth, height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.98)', zIndex: 1000, display: 'flex', flexDirection: 'column', boxShadow: '4px 0 15px rgba(0,0,0,0.2)', backdropFilter: 'blur(5px)', transition: 'width 0.3s ease' }}>
               
@@ -322,12 +322,12 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                     style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '12px' }} 
                   />
                   
-                  {/* Tekli Geçiş Düğmesi (1/4 ve 2/5 arası) */}
+                  {/* Etiketsiz Sadece İşaret ( > veya < ) Düğmesi */}
                   <button 
-                    onClick={() => setListWidth(prev => prev === '25%' ? '40%' : '25%')} 
-                    title="Genişliği Değiştir (1/4 veya 2/5)"
-                    style={{ padding: '6px 10px', fontSize: '11px', backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                    {listWidth === '25%' ? '2/5 >' : '< 1/4'}
+                    onClick={() => setListWidth(prev => prev === '25%' ? '40%':'25%')} 
+                    title="Genişliği Değiştir"
+                    style={{ padding: '6px 12px', fontSize: '13px', backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    {listWidth === '25%' ? '>' : '<'}
                   </button>
 
                   <button 
