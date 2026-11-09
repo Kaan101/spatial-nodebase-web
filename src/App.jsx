@@ -113,6 +113,9 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         }
       });
 
+      // En son tarih en üstte olacak şekilde sıralama (Azalan / Descending)
+      uniqueNodes.sort((a, b) => new Date(b.event_date) - new Date(a.event_date));
+
       setNodes(uniqueNodes);
     } catch (error) {
       console.error("Veri çekme hatası:", error);
@@ -121,17 +124,16 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
     }
   };
 
-  // 3 Saniyede bir asenkron veri güncelleme (Polling) mekanizması
   useEffect(() => {
     if (!apiKey) return;
     
-    fetchNodes(); // İlk açılışta hemen çek
+    fetchNodes(); 
 
     const intervalId = setInterval(() => {
       fetchNodes();
-    }, 3000); // Her 3 sn'de bir arka planda yenile
+    }, 3000); 
 
-    return () => clearInterval(intervalId); // Temizlik
+    return () => clearInterval(intervalId); 
   }, [apiKey]);
 
   const handleAddNode = async (e) => {
@@ -237,8 +239,8 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
   };
 
   const defaultCenter = [41.0082, 28.9784];
-  const mapCenter = nodes.length > 0 && nodes[nodes.length-1].latitude 
-    ? [nodes[nodes.length-1].latitude, nodes[nodes.length-1].longitude] 
+  const mapCenter = nodes.length > 0 && nodes[0].latitude 
+    ? [nodes[0].latitude, nodes[0].longitude] 
     : defaultCenter;
 
   const filteredNodes = nodes.filter(node => 
