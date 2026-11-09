@@ -85,7 +85,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
   const [viewMode, setViewMode] = useState(1); 
   const [isFormVisible, setIsFormVisible] = useState(false); 
   
-  // 3. Görünüm için State'ler
   const [isListOpen, setIsListOpen] = useState(false); 
   const [searchTerm, setSearchTerm] = useState(''); 
 
@@ -214,7 +213,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             });
           }
         }
-        alert("CSV verileri sisteme yüklendi!");
+        alert("CSV verileri başarıyla sisteme yüklendi!");
         await fetchNodes();
       } catch (error) {
         console.error(error);
@@ -232,7 +231,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
     ? [nodes[nodes.length-1].latitude, nodes[nodes.length-1].longitude] 
     : defaultCenter;
 
-  // Arama filtresini uygula
   const filteredNodes = nodes.filter(node => 
     node.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
     node.label.toLowerCase().includes(searchTerm.toLowerCase())
@@ -283,7 +281,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       {/* MAIN CONTENT AREA */}
       {viewMode === 3 ? (
         
-        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE PANEL */
+        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE 2 SATIRLI CANLI LİSTE */
         <div style={{ position: 'relative', width: '100%', minHeight: '600px', height: 'calc(100vh - 120px)', marginTop: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           
           <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%', zIndex: 1 }}>
@@ -304,46 +302,74 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
           {!isListOpen && (
             <button 
               onClick={() => setIsListOpen(true)} 
-              style={{ position: 'absolute', top: '20px', left: '70px', zIndex: 1000, padding: '10px 15px', backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 5px rgba(0,0,0,0.2)', cursor: 'pointer', fontWeight: 'bold' }}>
+              style={{ position: 'absolute', top: '20px', left: '70px', zIndex: 1000, padding: '10px 15px', backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '6px', boxShadow: '0 4px 10px rgba(0,0,0,0.15)', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
               ☰ Listeyi Aç
             </button>
           )}
 
           {/* Sol Panel (Drawer) - Haritanın 2/5'i genişliğinde */}
           {isListOpen && (
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '40%', height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.95)', zIndex: 1000, display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.3)', backdropFilter: 'blur(5px)' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '40%', height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.98)', zIndex: 1000, display: 'flex', flexDirection: 'column', boxShadow: '4px 0 15px rgba(0,0,0,0.2)', backdropFilter: 'blur(5px)' }}>
               
-              <div style={{ padding: '15px', borderBottom: '1px solid #ddd', display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <div style={{ padding: '15px', borderBottom: '1px solid #ddd', display: 'flex', gap: '10px', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
                 <input 
                   type="text" 
-                  placeholder="Kod veya açıklama ara..." 
+                  placeholder="Araç kodu veya açıklama ara..." 
                   value={searchTerm} 
                   onChange={e => setSearchTerm(e.target.value)} 
-                  style={{ flex: 1, padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} 
+                  style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px' }} 
                 />
                 <button 
                   onClick={() => setIsListOpen(false)} 
-                  style={{ padding: '10px 15px', cursor: 'pointer', border: 'none', backgroundColor: '#dc3545', color: 'white', borderRadius: '4px', fontWeight: 'bold' }}>
-                  ✖
+                  style={{ padding: '10px 14px', cursor: 'pointer', border: 'none', backgroundColor: '#6c757d', color: 'white', borderRadius: '6px', fontWeight: 'bold' }}>
+                  ✕
                 </button>
               </div>
 
-              <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
-                {filteredNodes.length === 0 ? <p style={{ textAlign: 'center', color: '#666' }}>Kayıt bulunamadı.</p> : null}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {filteredNodes.length === 0 ? <p style={{ textAlign: 'center', color: '#666', marginTop: '20px' }}>Kayıt bulunamadı.</p> : null}
+                
                 {filteredNodes.map(node => (
                   <div 
                     key={node.id} 
                     onClick={() => setFocusedLocation([node.latitude, node.longitude])}
-                    style={{ padding: '12px', borderBottom: '1px solid #eee', cursor: 'pointer', backgroundColor: '#fff', borderRadius: '4px', marginBottom: '8px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f1f1'} 
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
+                    style={{ 
+                      padding: '12px 14px', 
+                      backgroundColor: '#fff', 
+                      borderRadius: '8px', 
+                      cursor: 'pointer', 
+                      border: '1px solid #e2e8f0',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f8fafc';
+                      e.currentTarget.style.borderColor = '#cbd5e1';
+                    }} 
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#fff';
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                    }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                      <strong style={{ fontSize: '14px' }}>{node.code}</strong>
-                      <span style={{ fontSize: '10px', color: '#888' }}>{new Date(node.event_date).toLocaleString('tr-TR')}</span>
+                    {/* 1. Satır: Kod ve Tarih */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#0f172a', backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
+                        {node.code}
+                      </span>
+                      <span style={{ fontSize: '11px', color: '#64748b' }}>
+                        {new Date(node.event_date).toLocaleString('tr-TR')}
+                      </span>
                     </div>
-                    <div style={{ fontSize: '13px', color: '#444' }}>{node.label}</div>
-                    <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>İşlem ID: {node.transaction_id}</div>
+
+                    {/* 2. Satır: Açıklama ve İşlem ID */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '12px', color: '#334155', fontWeight: '500' }}>
+                        {node.label}
+                      </span>
+                      <span style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace' }}>
+                        {node.transaction_id}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -353,7 +379,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
 
       ) : (
         
-        /* 1. VE 2. GÖRÜNÜM: FORM, HARİTA VE ALT TABLO */
+        /* 1. VE 2. GÖRÜNÜM */
         <>
           <div style={{ display: 'flex', gap: '20px', marginTop: '20px', flexDirection: viewMode === 1 ? 'row' : 'column' }}>
             
