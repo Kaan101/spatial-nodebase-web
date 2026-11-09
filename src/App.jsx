@@ -87,7 +87,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
   
   const [isListOpen, setIsListOpen] = useState(false); 
   const [searchTerm, setSearchTerm] = useState(''); 
-  const [listWidth, setListWidth] = useState(320); // Başlangıç genişliği 320px
+  const [listWidth, setListWidth] = useState('25%'); // Başlangıç 1/4 (%25)
 
   const [formData, setFormData] = useState({
     code: 'TRK-002', label: 'Test Aracı', transaction_id: 'TXN-' + Math.floor(Math.random() * 10000),
@@ -237,10 +237,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
     node.label.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Genişletme ve Daraltma Fonksiyonları
-  const increaseWidth = () => setListWidth(prev => Math.min(prev + 60, 600)); // Max 600px
-  const decreaseWidth = () => setListWidth(prev => Math.max(prev - 60, 240)); // Min 240px
-
   const renderForm = () => (
     <div style={{ padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #ddd' }}>
       <h3 style={{ marginTop: '0' }}>Manuel Konum Gönder</h3>
@@ -286,7 +282,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       {/* MAIN CONTENT AREA */}
       {viewMode === 3 ? (
         
-        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE < / > BUTONLU SOL PANEL */
+        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE TEK TUŞLA DEĞİŞEN SOL PANEL */
         <div style={{ position: 'relative', width: '100%', minHeight: '600px', height: 'calc(100vh - 120px)', marginTop: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           
           <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%', zIndex: 1 }}>
@@ -312,9 +308,9 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             </button>
           )}
 
-          {/* Sol Panel (Drawer) - Piksel Bazlı ve < / > Butonlu */}
+          {/* Sol Panel (Drawer) - Tek Düğmeli Genişlik Geçişi */}
           {isListOpen && (
-            <div style={{ position: 'absolute', top: 0, left: 0, width: `${listWidth}px`, height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.98)', zIndex: 1000, display: 'flex', flexDirection: 'column', boxShadow: '4px 0 15px rgba(0,0,0,0.2)', backdropFilter: 'blur(5px)', transition: 'width 0.2s ease' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: listWidth, height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.98)', zIndex: 1000, display: 'flex', flexDirection: 'column', boxShadow: '4px 0 15px rgba(0,0,0,0.2)', backdropFilter: 'blur(5px)', transition: 'width 0.3s ease' }}>
               
               <div style={{ padding: '12px', borderBottom: '1px solid #ddd', display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: '#f8f9fa' }}>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -326,21 +322,13 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                     style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '12px' }} 
                   />
                   
-                  {/* < / > Boyutlandırma Butonları */}
-                  <div style={{ display: 'flex', gap: '2px', backgroundColor: '#e2e8f0', padding: '2px', borderRadius: '4px' }}>
-                    <button 
-                      onClick={decreaseWidth} 
-                      title="Daralt (<)"
-                      style={{ padding: '4px 8px', fontSize: '11px', backgroundColor: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', fontWeight: 'bold' }}>
-                      &lt;
-                    </button>
-                    <button 
-                      onClick={increaseWidth} 
-                      title="Genişlet (>)"
-                      style={{ padding: '4px 8px', fontSize: '11px', backgroundColor: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', fontWeight: 'bold' }}>
-                      &gt;
-                    </button>
-                  </div>
+                  {/* Tekli Geçiş Düğmesi (1/4 ve 2/5 arası) */}
+                  <button 
+                    onClick={() => setListWidth(prev => prev === '25%' ? '40%' : '25%')} 
+                    title="Genişliği Değiştir (1/4 veya 2/5)"
+                    style={{ padding: '6px 10px', fontSize: '11px', backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                    {listWidth === '25%' ? '2/5 >' : '< 1/4'}
+                  </button>
 
                   <button 
                     onClick={() => setIsListOpen(false)} 
