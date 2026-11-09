@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+// BrowserRouter yerine HashRouter kullanıyoruz (Çökme sorununu kökten çözer)
+import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -18,11 +19,9 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-// Harita merkezini dinamik olarak değiştirmek için yardımcı bileşen
 function MapCenterUpdater({ center }) {
   const map = useMap();
   if (center) {
-    // Zoom seviyesini 16'dan 14'e düşürdük, daha geniş bir açıdan odaklanacak
     map.flyTo(center, 14, { duration: 1.5 }); 
   }
   return null;
@@ -169,7 +168,70 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         <h3>Son Konum ve İşlem Verileri</h3>
         {loading ? <p>Yükleniyor...</p> : nodes.length === 0 ? <p>Kayıt yok.</p> : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontSize: '9px' }}>
+            {/* Tablo kırılmasını engellemek için beyaz boşluk ve nowrap kuralı eklendi */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontSize: '11px', whiteSpace: 'nowrap' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8f9fa', textAlign: 'left' }}>
-                  <th style={{ padding: '
+                  <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Tarih</th>
+                  <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Kod</th>
+                  <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Açıklama</th>
+                  <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>İşlem ID</th>
+                  <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Koordinat</th>
+                </tr>
+              </thead>
+              <tbody>
+                {nodes.map(node => (
+                  <tr 
+                    key={node.id} 
+                    onClick={() => setFocusedLocation([node.latitude, node.longitude])} 
+                    style={{ borderBottom: '1px solid #eee', cursor: 'pointer' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f1f1'} 
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <td style={{ padding: '10px' }}>{new Date(node.event_date).toLocaleString('tr-TR')}</td>
+                    <td style={{ padding: '10px' }}><strong>{node.code}</strong></td>
+                    <td style={{ padding: '10px' }}>{node.label}</td>
+                    <td style={{ padding: '10px' }}>{node.transaction_id}</td>
+                    <td style={{ padding: '10px' }}>{node.latitude}, {node.longitude}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  const [apiKey, setApiKey] = useState(localStorage.getItem('apiKey') || '');
+  const [tenantName, setTenantName] = useState(localStorage.getItem('tenantName') || '');
+
+  const handleLogin = (key, name) => {
+    setApiKey(key);
+    setTenantName(name);
+    localStorage.setItem('apiKey', key);
+    localStorage.setItem('tenantName', name);
+  };
+
+  const handleLogout = () => {
+    setApiKey('');
+    setTenantName('');
+    localStorage.removeItem('apiKey');
+    localStorage.removeItem('tenantName');
+  };
+
+  return (
+    <HashRouter>
+      <Routes>
+        <Route path="/" element={
+          apiKey ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />
+        } />
+        <Route path="/dashboard" element={
+          apiKey ? <Dashboard tenantName={tenantName} apiKey={apiKey} onLogout={handleLogout} /> : <Navigate to="/" />
+        } />
+      </Routes>
+    </HashRouter>
+  );
+}
