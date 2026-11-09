@@ -26,13 +26,12 @@ function MapCenterUpdater({ center }) {
   return null;
 }
 
-// Görünüm değiştiğinde haritadaki gri tile (kare) hatasını önlemek için yeniden boyutlandırıcı
 function MapResizer({ viewMode, isFormVisible }) {
   const map = useMap();
   useEffect(() => {
     setTimeout(() => {
       map.invalidateSize();
-    }, 200); // Animasyon veya render sonrası Leaflet'i uyarır
+    }, 200); 
   }, [viewMode, isFormVisible, map]);
   return null;
 }
@@ -83,9 +82,8 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
   const [focusedLocation, setFocusedLocation] = useState(null); 
   const fileInputRef = useRef(null);
   
-  // Görünüm Parametreleri
-  const [viewMode, setViewMode] = useState(1); // 1 = Yan Yana, 2 = Tam Genişlik Harita
-  const [isFormVisible, setIsFormVisible] = useState(false); // Görünüm 2 için formu aç/kapat
+  const [viewMode, setViewMode] = useState(1); 
+  const [isFormVisible, setIsFormVisible] = useState(false); 
 
   const [formData, setFormData] = useState({
     code: 'TRK-002', label: 'Test Aracı', transaction_id: 'TXN-' + Math.floor(Math.random() * 10000),
@@ -137,7 +135,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       await fetchNodes();
       setFocusedLocation([formData.latitude, formData.longitude]);
       setFormData({ ...formData, transaction_id: 'TXN-' + Math.floor(Math.random() * 10000) });
-      setIsFormVisible(false); // Kayıt sonrası formu otomatik kapat (Görünüm 2 için)
+      setIsFormVisible(false); 
     } catch (error) {
       alert("Kayıt sırasında hata oluştu!");
     } finally {
@@ -197,9 +195,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
 
         for (let i = 1; i < rows.length; i++) {
           if (!rows[i].trim()) continue;
-          
           const cols = rows[i].split(',').map(c => c.replace(/"/g, '').trim());
-          
           if (cols[codeIdx] && cols[latIdx] && cols[lngIdx]) {
             const payload = {
               code: cols[codeIdx],
@@ -232,7 +228,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
     ? [nodes[nodes.length-1].latitude, nodes[nodes.length-1].longitude] 
     : defaultCenter;
 
-  // Form Bileşenini tekrar tekrar yazmamak için değişkene atıyoruz
   const renderForm = () => (
     <div style={{ padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #ddd' }}>
       <h3 style={{ marginTop: '0' }}>Manuel Konum Gönder</h3>
@@ -251,14 +246,12 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
   return (
     <div style={{ padding: '30px', fontFamily: 'sans-serif', maxWidth: '1200px', margin: '0 auto' }}>
       
-      {/* Header Alanı */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '15px' }}>
         <h2>Hoş Geldiniz, {tenantName}</h2>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
           
-          {/* Parametrik Görünüm Seçici */}
           <div style={{ display: 'flex', gap: '5px', backgroundColor: '#e9ecef', padding: '4px', borderRadius: '6px' }}>
-            <button onClick={() => setViewMode(1)} style={{ padding: '6px 12px', fontSize: '13px', backgroundColor: viewMode === 1 ? '#fff' : 'transparent', color: viewMode === 1 ? '#000' : '#666', border: 'none', borderRadius: '4px', cursor: 'pointer', boxShadow: viewMode === 1 ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', fontWeight: viewMode === 1 ? 'bold' : 'normal' }}>
+            <button onClick={() => { setViewMode(1); setIsFormVisible(false); }} style={{ padding: '6px 12px', fontSize: '13px', backgroundColor: viewMode === 1 ? '#fff' : 'transparent', color: viewMode === 1 ? '#000' : '#666', border: 'none', borderRadius: '4px', cursor: 'pointer', boxShadow: viewMode === 1 ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', fontWeight: viewMode === 1 ? 'bold' : 'normal' }}>
               1. Görünüm
             </button>
             <button onClick={() => setViewMode(2)} style={{ padding: '6px 12px', fontSize: '13px', backgroundColor: viewMode === 2 ? '#fff' : 'transparent', color: viewMode === 2 ? '#000' : '#666', border: 'none', borderRadius: '4px', cursor: 'pointer', boxShadow: viewMode === 2 ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', fontWeight: viewMode === 2 ? 'bold' : 'normal' }}>
@@ -273,30 +266,20 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         </div>
       </div>
       
-      {/* Harita ve Form Alanı (Parametrik Yönlendirme) */}
       <div style={{ display: 'flex', gap: '20px', marginTop: '20px', flexDirection: viewMode === 1 ? 'row' : 'column' }}>
         
-        {/* Görünüm 1: Sol Menü Form / Görünüm 2: Gizli veya Butonla Açılan Form */}
-        {viewMode === 1 ? (
+        {viewMode === 1 && (
           <div style={{ flex: '1', minWidth: '300px' }}>
             {renderForm()}
           </div>
-        ) : (
-          <div>
-            <button 
-              onClick={() => setIsFormVisible(!isFormVisible)} 
-              style={{ padding: '10px 20px', backgroundColor: isFormVisible ? '#dc3545' : '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-              {isFormVisible ? '✖ Formu Kapat' : '➕ Yeni Konum Ekle'}
-            </button>
-            {isFormVisible && (
-              <div style={{ marginTop: '15px', maxWidth: '400px' }}>
-                {renderForm()}
-              </div>
-            )}
+        )}
+
+        {viewMode === 2 && isFormVisible && (
+          <div style={{ maxWidth: '400px' }}>
+            {renderForm()}
           </div>
         )}
 
-        {/* Harita: Görünüm 1'de sağda, Görünüm 2'de tam satır genişliğinde */}
         <div style={{ flex: viewMode === 1 ? '2' : 'none', width: viewMode === 1 ? 'auto' : '100%', height: viewMode === 1 ? '350px' : '450px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -314,11 +297,28 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         </div>
       </div>
 
-      {/* Tablo Alanı */}
       <div style={{ marginTop: '30px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3>Son Konum ve İşlem Verileri</h3>
           <div style={{ display: 'flex', gap: '10px' }}>
+            
+            {/* Outline Stilli, Transparan Yeni Konum Ekle Butonu */}
+            {viewMode === 2 && (
+              <button 
+                onClick={() => setIsFormVisible(!isFormVisible)} 
+                style={{ 
+                  padding: '6px 12px', 
+                  backgroundColor: 'transparent', 
+                  color: isFormVisible ? '#dc3545' : '#007bff', 
+                  border: `1px solid ${isFormVisible ? '#dc3545' : '#007bff'}`, 
+                  borderRadius: '4px', 
+                  cursor: 'pointer', 
+                  fontSize: '12px'
+                }}>
+                {isFormVisible ? '✖ Formu Kapat' : '➕ Yeni Konum Ekle'}
+              </button>
+            )}
+
             <input 
               type="file" 
               accept=".csv" 
