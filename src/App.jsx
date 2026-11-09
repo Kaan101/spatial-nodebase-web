@@ -282,7 +282,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       {/* MAIN CONTENT AREA */}
       {viewMode === 3 ? (
         
-        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE ÇERÇEVESİZ TEK ÇİZGİLİ KOMPAKT LİSTE */
+        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE ÇOK DARALTILMIŞ İKİ SATIRLI LİSTE */
         <div style={{ position: 'relative', width: '100%', minHeight: '600px', height: 'calc(100vh - 120px)', marginTop: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           
           <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%', zIndex: 1 }}>
@@ -308,7 +308,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             </button>
           )}
 
-          {/* Sol Panel (Drawer) - Çerçevesiz, Yatay Çizgi Ayraçlı Liste */}
+          {/* Sol Panel (Drawer) - Satır Araları Daraltılmış */}
           {isListOpen && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: listWidth, height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.98)', zIndex: 1000, display: 'flex', flexDirection: 'column', boxShadow: '4px 0 15px rgba(0,0,0,0.2)', backdropFilter: 'blur(5px)', transition: 'width 0.3s ease' }}>
               
@@ -345,10 +345,10 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                     key={node.id} 
                     onClick={() => setFocusedLocation([node.latitude, node.longitude])}
                     style={{ 
-                      padding: '8px 10px', 
+                      padding: '6px 10px', // Dikey dolgu daraltıldı
                       backgroundColor: 'transparent', 
                       cursor: 'pointer', 
-                      borderBottom: '1px solid #e2e8f0', // Tek satır çizgisi
+                      borderBottom: '1px solid #e2e8f0', 
                       transition: 'background-color 0.15s ease'
                     }}
                     onMouseEnter={(e) => {
@@ -358,8 +358,8 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                       e.currentTarget.style.backgroundColor = 'transparent';
                     }}
                   >
-                    {/* 1. Satır: Kod ve Tarih */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                    {/* 1. Satır: Kod ve Tarih (marginBottom sıfırlandı/daraltıldı) */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1px' }}>
                       <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a' }}>
                         {node.code}
                       </span>
