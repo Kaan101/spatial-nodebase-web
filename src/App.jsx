@@ -281,7 +281,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       {/* MAIN CONTENT AREA */}
       {viewMode === 3 ? (
         
-        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE 2 SATIRLI CANLI LİSTE */
+        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE 1/4 GENİŞLİĞİNDE SOL PANEL */
         <div style={{ position: 'relative', width: '100%', minHeight: '600px', height: 'calc(100vh - 120px)', marginTop: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           
           <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%', zIndex: 1 }}>
@@ -307,34 +307,34 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             </button>
           )}
 
-          {/* Sol Panel (Drawer) - Haritanın 2/5'i genişliğinde */}
+          {/* Sol Panel (Drawer) - Haritanın 1/4'i (%25) genişliğinde */}
           {isListOpen && (
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '40%', height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.98)', zIndex: 1000, display: 'flex', flexDirection: 'column', boxShadow: '4px 0 15px rgba(0,0,0,0.2)', backdropFilter: 'blur(5px)' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '25%', height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.98)', zIndex: 1000, display: 'flex', flexDirection: 'column', boxShadow: '4px 0 15px rgba(0,0,0,0.2)', backdropFilter: 'blur(5px)' }}>
               
-              <div style={{ padding: '15px', borderBottom: '1px solid #ddd', display: 'flex', gap: '10px', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
+              <div style={{ padding: '12px', borderBottom: '1px solid #ddd', display: 'flex', gap: '8px', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
                 <input 
                   type="text" 
-                  placeholder="Araç kodu veya açıklama ara..." 
+                  placeholder="Ara..." 
                   value={searchTerm} 
                   onChange={e => setSearchTerm(e.target.value)} 
-                  style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px' }} 
+                  style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '12px' }} 
                 />
                 <button 
                   onClick={() => setIsListOpen(false)} 
-                  style={{ padding: '10px 14px', cursor: 'pointer', border: 'none', backgroundColor: '#6c757d', color: 'white', borderRadius: '6px', fontWeight: 'bold' }}>
+                  style={{ padding: '8px 12px', cursor: 'pointer', border: 'none', backgroundColor: '#6c757d', color: 'white', borderRadius: '6px', fontWeight: 'bold' }}>
                   ✕
                 </button>
               </div>
 
-              <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {filteredNodes.length === 0 ? <p style={{ textAlign: 'center', color: '#666', marginTop: '20px' }}>Kayıt bulunamadı.</p> : null}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {filteredNodes.length === 0 ? <p style={{ textAlign: 'center', color: '#666', marginTop: '20px', fontSize: '12px' }}>Kayıt bulunamadı.</p> : null}
                 
                 {filteredNodes.map(node => (
                   <div 
                     key={node.id} 
                     onClick={() => setFocusedLocation([node.latitude, node.longitude])}
                     style={{ 
-                      padding: '12px 14px', 
+                      padding: '10px 12px', 
                       backgroundColor: '#fff', 
                       borderRadius: '8px', 
                       cursor: 'pointer', 
@@ -352,21 +352,21 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                     }}
                   >
                     {/* 1. Satır: Kod ve Tarih */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#0f172a', backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a', backgroundColor: '#f1f5f9', padding: '2px 5px', borderRadius: '4px' }}>
                         {node.code}
                       </span>
-                      <span style={{ fontSize: '11px', color: '#64748b' }}>
-                        {new Date(node.event_date).toLocaleString('tr-TR')}
+                      <span style={{ fontSize: '10px', color: '#64748b' }}>
+                        {new Date(node.event_date).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
 
                     {/* 2. Satır: Açıklama ve İşlem ID */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '12px', color: '#334155', fontWeight: '500' }}>
+                      <span style={{ fontSize: '11px', color: '#334155', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '110px' }}>
                         {node.label}
                       </span>
-                      <span style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace' }}>
+                      <span style={{ fontSize: '9px', color: '#94a3b8', fontFamily: 'monospace' }}>
                         {node.transaction_id}
                       </span>
                     </div>
