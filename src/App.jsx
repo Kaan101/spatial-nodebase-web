@@ -26,13 +26,13 @@ function MapCenterUpdater({ center }) {
   return null;
 }
 
-function MapResizer({ viewMode, isFormVisible }) {
+function MapResizer({ viewMode, isFormVisible, isListOpen }) {
   const map = useMap();
   useEffect(() => {
     setTimeout(() => {
       map.invalidateSize();
     }, 200); 
-  }, [viewMode, isFormVisible, map]);
+  }, [viewMode, isFormVisible, isListOpen, map]);
   return null;
 }
 
@@ -84,6 +84,10 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
   
   const [viewMode, setViewMode] = useState(1); 
   const [isFormVisible, setIsFormVisible] = useState(false); 
+  
+  // 3. Görünüm için State'ler
+  const [isListOpen, setIsListOpen] = useState(false); 
+  const [searchTerm, setSearchTerm] = useState(''); 
 
   const [formData, setFormData] = useState({
     code: 'TRK-002', label: 'Test Aracı', transaction_id: 'TXN-' + Math.floor(Math.random() * 10000),
@@ -228,6 +232,12 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
     ? [nodes[nodes.length-1].latitude, nodes[nodes.length-1].longitude] 
     : defaultCenter;
 
+  // Arama filtresini uygula
+  const filteredNodes = nodes.filter(node => 
+    node.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    node.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const renderForm = () => (
     <div style={{ padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #ddd' }}>
       <h3 style={{ marginTop: '0' }}>Manuel Konum Gönder</h3>
@@ -244,8 +254,9 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
   );
 
   return (
-    <div style={{ padding: '30px', fontFamily: 'sans-serif', maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{ padding: '30px', fontFamily: 'sans-serif', maxWidth: viewMode === 3 ? '100%' : '1200px', margin: '0 auto' }}>
       
+      {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '15px' }}>
         <h2>Hoş Geldiniz, {tenantName}</h2>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
@@ -257,6 +268,9 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             <button onClick={() => setViewMode(2)} style={{ padding: '6px 12px', fontSize: '13px', backgroundColor: viewMode === 2 ? '#fff' : 'transparent', color: viewMode === 2 ? '#000' : '#666', border: 'none', borderRadius: '4px', cursor: 'pointer', boxShadow: viewMode === 2 ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', fontWeight: viewMode === 2 ? 'bold' : 'normal' }}>
               2. Görünüm
             </button>
+            <button onClick={() => setViewMode(3)} style={{ padding: '6px 12px', fontSize: '13px', backgroundColor: viewMode === 3 ? '#fff' : 'transparent', color: viewMode === 3 ? '#000' : '#666', border: 'none', borderRadius: '4px', cursor: 'pointer', boxShadow: viewMode === 3 ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', fontWeight: viewMode === 3 ? 'bold' : 'normal' }}>
+              3. Görünüm
+            </button>
           </div>
 
           <span style={{ fontSize: '12px', color: '#666', backgroundColor: '#f0f0f0', padding: '4px 8px', borderRadius: '4px' }}>
@@ -266,21 +280,16 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         </div>
       </div>
       
-      <div style={{ display: 'flex', gap: '20px', marginTop: '20px', flexDirection: viewMode === 1 ? 'row' : 'column' }}>
+      {/* MAIN CONTENT AREA */}
+      {viewMode === 3 ? (
         
-        {/* 1. Görünüm Formu (Solda) */}
-        {viewMode === 1 && (
-          <div style={{ flex: '1', minWidth: '300px' }}>
-            {renderForm()}
-          </div>
-        )}
-
-        {/* Harita */}
-        <div style={{ flex: viewMode === 1 ? '2' : 'none', width: viewMode === 1 ? 'auto' : '100%', height: viewMode === 1 ? '350px' : '450px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
-          <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }}>
+        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE PANEL */
+        <div style={{ position: 'relative', width: '100%', minHeight: '600px', height: 'calc(100vh - 120px)', marginTop: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
+          
+          <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%', zIndex: 1 }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapCenterUpdater center={focusedLocation} />
-            <MapResizer viewMode={viewMode} isFormVisible={isFormVisible} />
+            <MapResizer viewMode={viewMode} isFormVisible={isFormVisible} isListOpen={isListOpen} />
 
             {nodes.map(node => (
               node.latitude && node.longitude && (
@@ -290,93 +299,151 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
               )
             ))}
           </MapContainer>
+
+          {/* Harita Üstü Liste Düğmesi */}
+          {!isListOpen && (
+            <button 
+              onClick={() => setIsListOpen(true)} 
+              style={{ position: 'absolute', top: '20px', left: '70px', zIndex: 1000, padding: '10px 15px', backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '4px', boxShadow: '0 2px 5px rgba(0,0,0,0.2)', cursor: 'pointer', fontWeight: 'bold' }}>
+              ☰ Listeyi Aç
+            </button>
+          )}
+
+          {/* Sol Panel (Drawer) - Haritanın 2/5'i genişliğinde */}
+          {isListOpen && (
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '40%', height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.95)', zIndex: 1000, display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.3)', backdropFilter: 'blur(5px)' }}>
+              
+              <div style={{ padding: '15px', borderBottom: '1px solid #ddd', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <input 
+                  type="text" 
+                  placeholder="Kod veya açıklama ara..." 
+                  value={searchTerm} 
+                  onChange={e => setSearchTerm(e.target.value)} 
+                  style={{ flex: 1, padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} 
+                />
+                <button 
+                  onClick={() => setIsListOpen(false)} 
+                  style={{ padding: '10px 15px', cursor: 'pointer', border: 'none', backgroundColor: '#dc3545', color: 'white', borderRadius: '4px', fontWeight: 'bold' }}>
+                  ✖
+                </button>
+              </div>
+
+              <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
+                {filteredNodes.length === 0 ? <p style={{ textAlign: 'center', color: '#666' }}>Kayıt bulunamadı.</p> : null}
+                {filteredNodes.map(node => (
+                  <div 
+                    key={node.id} 
+                    onClick={() => setFocusedLocation([node.latitude, node.longitude])}
+                    style={{ padding: '12px', borderBottom: '1px solid #eee', cursor: 'pointer', backgroundColor: '#fff', borderRadius: '4px', marginBottom: '8px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f1f1'} 
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <strong style={{ fontSize: '14px' }}>{node.code}</strong>
+                      <span style={{ fontSize: '10px', color: '#888' }}>{new Date(node.event_date).toLocaleString('tr-TR')}</span>
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#444' }}>{node.label}</div>
+                    <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>İşlem ID: {node.transaction_id}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* 2. Görünüm Formu (Haritanın Altında) */}
-        {viewMode === 2 && isFormVisible && (
-          <div style={{ maxWidth: '400px' }}>
-            {renderForm()}
-          </div>
-        )}
-      </div>
-
-      <div style={{ marginTop: '30px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3>Son Konum ve İşlem Verileri</h3>
-          <div style={{ display: 'flex', gap: '10px' }}>
+      ) : (
+        
+        /* 1. VE 2. GÖRÜNÜM: FORM, HARİTA VE ALT TABLO */
+        <>
+          <div style={{ display: 'flex', gap: '20px', marginTop: '20px', flexDirection: viewMode === 1 ? 'row' : 'column' }}>
             
-            {viewMode === 2 && (
-              <button 
-                onClick={() => setIsFormVisible(!isFormVisible)} 
-                style={{ 
-                  padding: '6px 12px', 
-                  backgroundColor: 'transparent', 
-                  color: isFormVisible ? '#dc3545' : '#007bff', 
-                  border: `1px solid ${isFormVisible ? '#dc3545' : '#007bff'}`, 
-                  borderRadius: '4px', 
-                  cursor: 'pointer', 
-                  fontSize: '12px'
-                }}>
-                {isFormVisible ? '✖ Formu Kapat' : '➕ Yeni Konum Ekle'}
-              </button>
+            {viewMode === 1 && (
+              <div style={{ flex: '1', minWidth: '300px' }}>
+                {renderForm()}
+              </div>
             )}
 
-            <input 
-              type="file" 
-              accept=".csv" 
-              onChange={handleImportCSV} 
-              ref={fileInputRef}
-              style={{ display: 'none' }} 
-            />
-            <button 
-              onClick={() => fileInputRef.current.click()} 
-              disabled={isImporting}
-              style={{ padding: '6px 12px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', cursor: isImporting ? 'not-allowed' : 'pointer', fontSize: '12px' }}
-            >
-              {isImporting ? 'Yükleniyor...' : '⬆️ CSV Yükle'}
-            </button>
-            <button 
-              onClick={handleExportCSV} 
-              style={{ padding: '6px 12px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
-            >
-              ⬇️ CSV İndir
-            </button>
-          </div>
-        </div>
-        
-        {loading ? <p>Yükleniyor...</p> : nodes.length === 0 ? <p>Kayıt yok.</p> : (
-          <div style={{ overflowX: 'auto', marginTop: '10px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontSize: '11px', whiteSpace: 'nowrap' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8f9fa', textAlign: 'left' }}>
-                  <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Tarih</th>
-                  <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Kod</th>
-                  <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Açıklama</th>
-                  <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>İşlem ID</th>
-                  <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Koordinat</th>
-                </tr>
-              </thead>
-              <tbody>
+            {viewMode === 2 && isFormVisible && (
+              <div style={{ maxWidth: '400px' }}>
+                {renderForm()}
+              </div>
+            )}
+
+            <div style={{ flex: viewMode === 1 ? '2' : 'none', width: viewMode === 1 ? 'auto' : '100%', height: viewMode === 1 ? '350px' : '450px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
+              <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%', zIndex: 1 }}>
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <MapCenterUpdater center={focusedLocation} />
+                <MapResizer viewMode={viewMode} isFormVisible={isFormVisible} isListOpen={isListOpen} />
+
                 {nodes.map(node => (
-                  <tr 
-                    key={node.id} 
-                    onClick={() => setFocusedLocation([node.latitude, node.longitude])} 
-                    style={{ borderBottom: '1px solid #eee', cursor: 'pointer' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f1f1'} 
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <td style={{ padding: '10px' }}>{new Date(node.event_date).toLocaleString('tr-TR')}</td>
-                    <td style={{ padding: '10px' }}><strong>{node.code}</strong></td>
-                    <td style={{ padding: '10px' }}>{node.label}</td>
-                    <td style={{ padding: '10px' }}>{node.transaction_id}</td>
-                    <td style={{ padding: '10px' }}>{node.latitude}, {node.longitude}</td>
-                  </tr>
+                  node.latitude && node.longitude && (
+                    <Marker key={node.id} position={[node.latitude, node.longitude]}>
+                      <Popup><strong>{node.code}</strong><br/>{node.label}<br/>{new Date(node.event_date).toLocaleTimeString('tr-TR')}</Popup>
+                    </Marker>
+                  )
                 ))}
-              </tbody>
-            </table>
+              </MapContainer>
+            </div>
           </div>
-        )}
-      </div>
+
+          <div style={{ marginTop: '30px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3>Son Konum ve İşlem Verileri</h3>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                
+                {viewMode === 2 && (
+                  <button 
+                    onClick={() => setIsFormVisible(!isFormVisible)} 
+                    style={{ padding: '6px 12px', backgroundColor: 'transparent', color: isFormVisible ? '#dc3545' : '#007bff', border: `1px solid ${isFormVisible ? '#dc3545' : '#007bff'}`, borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                    {isFormVisible ? '✖ Formu Kapat' : '➕ Yeni Konum Ekle'}
+                  </button>
+                )}
+
+                <input type="file" accept=".csv" onChange={handleImportCSV} ref={fileInputRef} style={{ display: 'none' }} />
+                <button onClick={() => fileInputRef.current.click()} disabled={isImporting} style={{ padding: '6px 12px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', cursor: isImporting ? 'not-allowed' : 'pointer', fontSize: '12px' }}>
+                  {isImporting ? 'Yükleniyor...' : '⬆️ CSV Yükle'}
+                </button>
+                <button onClick={handleExportCSV} style={{ padding: '6px 12px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                  ⬇️ CSV İndir
+                </button>
+              </div>
+            </div>
+            
+            {loading ? <p>Yükleniyor...</p> : nodes.length === 0 ? <p>Kayıt yok.</p> : (
+              <div style={{ overflowX: 'auto', marginTop: '10px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f8f9fa', textAlign: 'left' }}>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Tarih</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Kod</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Açıklama</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>İşlem ID</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Koordinat</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {nodes.map(node => (
+                      <tr 
+                        key={node.id} 
+                        onClick={() => setFocusedLocation([node.latitude, node.longitude])} 
+                        style={{ borderBottom: '1px solid #eee', cursor: 'pointer' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f1f1'} 
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <td style={{ padding: '10px' }}>{new Date(node.event_date).toLocaleString('tr-TR')}</td>
+                        <td style={{ padding: '10px' }}><strong>{node.code}</strong></td>
+                        <td style={{ padding: '10px' }}>{node.label}</td>
+                        <td style={{ padding: '10px' }}>{node.transaction_id}</td>
+                        <td style={{ padding: '10px' }}>{node.latitude}, {node.longitude}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
