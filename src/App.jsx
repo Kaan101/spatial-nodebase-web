@@ -22,7 +22,8 @@ const API_URL = import.meta.env.VITE_API_URL;
 function MapCenterUpdater({ center }) {
   const map = useMap();
   if (center) {
-    map.flyTo(center, 14, { duration: 1.5 }); 
+    // Odaklanma zoom seviyesi 6'ya düşürüldü
+    map.flyTo(center, 6, { duration: 1.5 }); 
   }
   return null;
 }
@@ -148,7 +149,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         </div>
 
         <div style={{ flex: '2', minWidth: '400px', height: '350px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
-          <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
+            <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%' }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             
             <MapCenterUpdater center={focusedLocation} />
