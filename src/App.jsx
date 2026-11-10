@@ -102,9 +102,12 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
   const [focusedLocation, setFocusedLocation] = useState(null); 
   const fileInputRef = useRef(null);
   
+  // viewMode 1: Masaüstü Görünüm (Eski 1 ve 2'nin birleşimi)
+  // viewMode 3: Tam Ekran Harita Görünümü
   const [viewMode, setViewMode] = useState(1); 
-  const [isFormVisible, setIsFormVisible] = useState(false); 
-  const [isDrawerFormOpen, setIsDrawerFormOpen] = useState(false);
+  
+  const [isFormVisible, setIsFormVisible] = useState(false); // Masaüstü için form görünürlüğü
+  const [isDrawerFormOpen, setIsDrawerFormOpen] = useState(false); // Tam ekran görünüm için sol panel formu
   const [isDrawerFilterOpen, setIsDrawerFilterOpen] = useState(false);
   
   const [isListOpen, setIsListOpen] = useState(false); 
@@ -352,22 +355,28 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         for (let i = 1; i < rows.length; i++) {
           if (!rows[i].trim()) continue;
           const cols = rows[i].split(',').map(c => c.replace(/"/g, '').trim());
+          
+          const getCol = (name, defaultVal = '') => {
+            const idx = headers.indexOf(name);
+            return (idx !== -1 && cols[idx] !== undefined && cols[idx] !== '') ? cols[idx] : defaultVal;
+          };
+
           if (cols[codeIdx] && cols[latIdx] && cols[lngIdx]) {
             const payload = {
               code: cols[codeIdx],
-              label: cols[headers.indexOf('Etiket')] || 'CSV Kayıt',
-              definition: cols[headers.indexOf('Açıklama')] || '',
-              transaction_id: cols[headers.indexOf('İşlem ID')] || 'TXN-CSV-' + Math.floor(Math.random() * 10000),
-              unit: cols[headers.indexOf('Birim')] || '',
-              firm: cols[headers.indexOf('Firma')] || '',
-              branch: cols[headers.indexOf('Şube')] || '',
+              label: getCol('Etiket', 'CSV Kayıt'),
+              definition: getCol('Açıklama'),
+              transaction_id: getCol('İşlem ID', 'TXN-CSV-' + Math.floor(Math.random() * 10000)),
+              unit: getCol('Birim'),
+              firm: getCol('Firma'),
+              branch: getCol('Şube'),
               latitude: parseFloat(cols[latIdx]),
               longitude: parseFloat(cols[lngIdx]),
-              country: cols[headers.indexOf('Ülke')] || '',
-              region: cols[headers.indexOf('Bölge')] || '',
-              city: cols[headers.indexOf('Şehir')] || '',
-              address: cols[headers.indexOf('Adres')] || '',
-              postalcode: cols[headers.indexOf('Posta Kodu')] || '',
+              country: getCol('Ülke', 'Türkiye'),
+              region: getCol('Bölge'),
+              city: getCol('Şehir'),
+              address: getCol('Adres'),
+              postalcode: getCol('Posta Kodu'),
               event_date: new Date().toISOString()
             };
             await axios.post(`${API_URL}/nodes`, payload, {
@@ -444,9 +453,22 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
     return `${fullDateStr} ${timeStr}`;
   };
 
-  const renderForm = () => (
-    <div style={{ padding: '16px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box', fontSize: '11px', textAlign: 'left' }}>
-      <h4 style={{ marginTop: '0', fontSize: '13px', marginBottom: '8px' }}>Yeni Konum ve Detay Ekle</h4>
+  // Yeni Form Yapısı (Çarpı ikonu eklendi, onClose prope ile kapatılabilir)
+  const renderForm = (onClose) => (
+    <div style={{ padding: '16px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box', fontSize: '11px', textAlign: 'left', position: 'relative' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <h4 style={{ margin: '0', fontSize: '13px' }}>Yeni Konum ve Detay Ekle</h4>
+        {/* Çarpı İkonu */}
+        <button 
+          type="button"
+          onClick={onClose} 
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#5f6368', padding: '0 4px', fontWeight: 'bold' }}
+          title="Formu Kapat"
+        >
+          ✕
+        </button>
+      </div>
+      
       <form onSubmit={handleAddNode} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <input type="text" placeholder="Araç/Cihaz Kodu *" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} style={{ padding: '5px', fontSize: '11px' }} required />
         <input type="text" placeholder="Serbest Metin / Etiket (label)" value={formData.label} onChange={e => setFormData({...formData, label: e.target.value})} style={{ padding: '5px', fontSize: '11px' }} />
@@ -467,6 +489,15 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
           {isSubmitting ? 'Gönderiliyor...' : 'API\'ye Gönder'}
         </button>
       </form>
+
+      <div style={{ display: 'flex', gap: '8px', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #eee' }}>
+        <button type="button" onClick={() => fileInputRef.current.click()} disabled={isImporting} style={{ flex: 1, padding: '8px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', cursor: isImporting ? 'not-allowed' : 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+          {isImporting ? 'Yükleniyor...' : '⬆️ CSV Yükle'}
+        </button>
+        <button type="button" onClick={handleExportCSV} style={{ flex: 1, padding: '8px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+          ⬇️ CSV İndir
+        </button>
+      </div>
     </div>
   );
 
@@ -543,6 +574,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif', width: '90%', maxWidth: '1600px', margin: '0 auto' }}>
+      <input type="file" accept=".csv" onChange={handleImportCSV} ref={fileInputRef} style={{ display: 'none' }} />
       
       {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '12px' }}>
@@ -551,13 +583,10 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
           
           <div style={{ display: 'flex', gap: '4px', backgroundColor: '#e9ecef', padding: '3px', borderRadius: '6px' }}>
             <button onClick={() => { setViewMode(1); setIsFormVisible(false); }} style={{ padding: '5px 10px', fontSize: '11px', backgroundColor: viewMode === 1 ? '#fff' : 'transparent', color: viewMode === 1 ? '#000' : '#666', border: 'none', borderRadius: '4px', cursor: 'pointer', boxShadow: viewMode === 1 ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', fontWeight: viewMode === 1 ? 'bold' : 'normal' }}>
-              1. Görünüm
-            </button>
-            <button onClick={() => setViewMode(2)} style={{ padding: '5px 10px', fontSize: '11px', backgroundColor: viewMode === 2 ? '#fff' : 'transparent', color: viewMode === 2 ? '#000' : '#666', border: 'none', borderRadius: '4px', cursor: 'pointer', boxShadow: viewMode === 2 ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', fontWeight: viewMode === 2 ? 'bold' : 'normal' }}>
-              2. Görünüm
+              Masaüstü Görünüm
             </button>
             <button onClick={() => setViewMode(3)} style={{ padding: '5px 10px', fontSize: '11px', backgroundColor: viewMode === 3 ? '#fff' : 'transparent', color: viewMode === 3 ? '#000' : '#666', border: 'none', borderRadius: '4px', cursor: 'pointer', boxShadow: viewMode === 3 ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', fontWeight: viewMode === 3 ? 'bold' : 'normal' }}>
-              3. Görünüm
+              Tam Ekran Harita
             </button>
           </div>
 
@@ -571,7 +600,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       {/* MAIN CONTENT AREA */}
       {viewMode === 3 ? (
         
-        /* 3. GÖRÜNÜM */
+        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA */
         <div style={{ position: 'relative', width: '100%', minHeight: '600px', height: 'calc(100vh - 120px)', marginTop: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           
           <MapContainer center={defaultCenter} zoom={6} style={{ height: '100%', width: '100%', zIndex: 1 }}>
@@ -672,8 +701,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
               
               <div style={{ padding: '10px', borderBottom: '1px solid #e0e0e0', display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: '#fff' }}>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  
-                  {/* İkonu kaldırılmış, Dolgusuz Şeffaf Arama Çubuğu */}
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', backgroundColor: 'transparent', borderRadius: '4px', padding: '0 8px', border: '1px solid #ccc' }}>
                     <input 
                       type="text" 
@@ -684,19 +711,15 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                     />
                   </div>
                   
-                  {/* Genişletme Daraltma Butonu */}
                   <button 
                     onClick={() => setListWidth(prev => prev === '30%' ? '45%':'30%')} 
                     title="Genişliği Değiştir"
                     style={{ padding: '5px 8px', fontSize: '11px', backgroundColor: '#f1f3f4', border: '1px solid #dadce0', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', color: '#3c4043' }}>
                     {listWidth === '30%' ? '<' : '>'}
                   </button>
-                  
                 </div>
 
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'stretch', width: '100%', marginTop: '2px' }}>
-                  
-                  {/* Geniş Ekle / İptal Butonu (İptal durumunda gri outline olur) */}
                   <button 
                     onClick={() => { setIsDrawerFormOpen(!isDrawerFormOpen); setIsDrawerFilterOpen(false); }}
                     style={{ 
@@ -712,7 +735,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                   </button>
 
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {/* Tamamen Dolgusuz (Açık Gri / Mavi) Geniş Outline Filter Butonu */}
                     <button 
                       onClick={() => { setIsDrawerFilterOpen(!isDrawerFilterOpen); setIsDrawerFormOpen(false); }}
                       style={{ 
@@ -737,10 +759,9 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                 </div>
               </div>
 
-              {/* Sola Dayalı 3 Satırlı Ultra Kompakt İkonsuz Liste Görünümü */}
               <div style={{ flex: 1, overflowY: 'auto', padding: (isDrawerFormOpen || isDrawerFilterOpen) ? '10px' : '0', display: 'flex', flexDirection: 'column', backgroundColor: '#fff' }}>
                 {isDrawerFormOpen ? (
-                  renderForm()
+                  renderForm(() => setIsDrawerFormOpen(false)) // Kapatma callback'i gönderildi
                 ) : isDrawerFilterOpen ? (
                   renderFilterForm()
                 ) : (
@@ -766,7 +787,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'} 
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
                       >
-                        {/* Satır 1: Başlık ve Tarih */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', width: '100%' }}>
                           <span style={{ fontSize: '11px', fontWeight: '600', color: '#202124', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}>
                             {node.code} {node.label ? `- ${node.label}` : ''}
@@ -776,7 +796,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                           </span>
                         </div>
 
-                        {/* Satır 2: Konum Bilgileri */}
                         <div style={{ 
                           fontSize: '9px', 
                           color: '#70757a', 
@@ -793,7 +812,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                           ].filter(Boolean).join(' • ')}
                         </div>
 
-                        {/* Satır 3: Kurum ve İşlem Bilgileri */}
                         <div style={{ 
                           fontSize: '9px', 
                           color: '#70757a', 
@@ -819,23 +837,19 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
 
       ) : (
         
-        /* 1. VE 2. GÖRÜNÜM */
+        /* BİRLEŞTİRİLMİŞ MASAÜSTÜ GÖRÜNÜMÜ (1. GÖRÜNÜM) */
         <>
-          <div style={{ display: 'flex', gap: '20px', marginTop: '20px', flexDirection: viewMode === 1 ? 'row' : 'column' }}>
+          <div style={{ display: 'flex', gap: '20px', marginTop: '20px', flexDirection: 'row' }}>
             
-            {viewMode === 1 && (
-              <div style={{ flex: '1', minWidth: '300px' }}>
-                {renderForm()}
+            {/* Form alanı açıldığında sol tarafta görünür (Genişliği sabit veya flex) */}
+            {isFormVisible && (
+              <div style={{ flex: '1', minWidth: '320px', maxWidth: '400px' }}>
+                {renderForm(() => setIsFormVisible(false))}
               </div>
             )}
 
-            {viewMode === 2 && isFormVisible && (
-              <div style={{ maxWidth: '400px' }}>
-                {renderForm()}
-              </div>
-            )}
-
-            <div style={{ flex: viewMode === 1 ? '2' : 'none', width: viewMode === 1 ? 'auto' : '100%', height: '620px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
+            {/* Harita alanı. Form kapalıysa tüm alanı kaplar, açıksa kalan alanı kaplar. */}
+            <div style={{ flex: '2', height: '620px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc', transition: 'flex 0.3s ease' }}>
               <MapContainer center={defaultCenter} zoom={6} style={{ height: '100%', width: '100%', zIndex: 1 }}>
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 <MapCenterUpdater center={focusedLocation} />
@@ -884,35 +898,35 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
               <h3 style={{ fontSize: '14px', margin: 0 }}>Son Konum ve İşlem Verileri</h3>
               <div style={{ display: 'flex', gap: '8px' }}>
                 
-                {viewMode === 2 && (
+                {/* Form kapalıyken Ekle butonu liste üzerinde görünür */}
+                {!isFormVisible && (
                   <button 
-                    onClick={() => setIsFormVisible(!isFormVisible)} 
-                    style={{ padding: '5px 10px', backgroundColor: 'transparent', color: isFormVisible ? '#dc3545' : '#1a73e8', border: `1px solid ${isFormVisible ? '#dc3545' : '#1a73e8'}`, borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
-                    {isFormVisible ? '✖ Formu Kapat' : 'Ekle'}
+                    onClick={() => setIsFormVisible(true)} 
+                    style={{ padding: '6px 14px', backgroundColor: '#e6f4ea', color: '#137333', border: '1px solid #137333', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+                    ➕ Konum Ekle
                   </button>
                 )}
 
-                <input type="file" accept=".csv" onChange={handleImportCSV} ref={fileInputRef} style={{ display: 'none' }} />
-                <button onClick={() => fileInputRef.current.click()} disabled={isImporting} style={{ padding: '5px 10px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', cursor: isImporting ? 'not-allowed' : 'pointer', fontSize: '11px' }}>
+                <button onClick={() => fileInputRef.current.click()} disabled={isImporting} style={{ padding: '6px 14px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', cursor: isImporting ? 'not-allowed' : 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
                   {isImporting ? 'Yükleniyor...' : '⬆️ CSV Yükle'}
                 </button>
-                <button onClick={handleExportCSV} style={{ padding: '5px 10px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
+                <button onClick={handleExportCSV} style={{ padding: '6px 14px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
                   ⬇️ CSV İndir
                 </button>
               </div>
             </div>
             
             {loading ? <p style={{ fontSize: '11px' }}>Yükleniyor...</p> : nodes.length === 0 ? <p style={{ fontSize: '11px' }}>Kayıt yok.</p> : (
-              <div style={{ overflowX: 'auto', marginTop: '8px' }}>
+              <div style={{ overflowX: 'auto', marginTop: '12px' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontSize: '10px', whiteSpace: 'nowrap' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f8f9fa', textAlign: 'left' }}>
-                      <th style={{ padding: '8px', borderBottom: '2px solid #ddd' }}>Tarih</th>
-                      <th style={{ padding: '8px', borderBottom: '2px solid #ddd' }}>Kod</th>
-                      <th style={{ padding: '8px', borderBottom: '2px solid #ddd' }}>Etiket</th>
-                      <th style={{ padding: '8px', borderBottom: '2px solid #ddd' }}>Firma / Şehir</th>
-                      <th style={{ padding: '8px', borderBottom: '2px solid #ddd' }}>İşlem ID</th>
-                      <th style={{ padding: '8px', borderBottom: '2px solid #ddd' }}>Koordinat</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Tarih</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Kod</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Etiket</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Firma / Şehir</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>İşlem ID</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Koordinat</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -924,12 +938,12 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f1f1'} 
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                       >
-                        <td style={{ padding: '8px' }}>{formatFriendlyDate(node.event_date)}</td>
-                        <td style={{ padding: '8px' }}><strong>{node.code}</strong></td>
-                        <td style={{ padding: '8px' }}>{node.label || '-'}</td>
-                        <td style={{ padding: '8px' }}>{node.firm ? `${node.firm} / ` : ''}{node.city || '-'}</td>
-                        <td style={{ padding: '8px' }}>{node.transaction_id}</td>
-                        <td style={{ padding: '8px' }}>{node.latitude}, {node.longitude}</td>
+                        <td style={{ padding: '10px' }}>{formatFriendlyDate(node.event_date)}</td>
+                        <td style={{ padding: '10px' }}><strong>{node.code}</strong></td>
+                        <td style={{ padding: '10px' }}>{node.label || '-'}</td>
+                        <td style={{ padding: '10px' }}>{node.firm ? `${node.firm} / ` : ''}{node.city || '-'}</td>
+                        <td style={{ padding: '10px' }}>{node.transaction_id}</td>
+                        <td style={{ padding: '10px' }}>{node.latitude}, {node.longitude}</td>
                       </tr>
                     ))}
                   </tbody>
