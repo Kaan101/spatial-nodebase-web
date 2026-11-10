@@ -87,9 +87,10 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
   
   const [isListOpen, setIsListOpen] = useState(false); 
   const [searchTerm, setSearchTerm] = useState(''); 
+  const [selectedFirm, setSelectedFirm] = useState('');
+  const [selectedCity, setSelectedCity] = useState('');
   const [listWidth, setListWidth] = useState('25%'); 
 
-  // Genişletilmiş Form State'i
   const [formData, setFormData] = useState({
     code: 'TRK-002', 
     label: 'Test Aracı', 
@@ -263,16 +264,27 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
     reader.readAsText(file);
   };
 
-  const defaultCenter = [41.0082, 28.9784];
-  const mapCenter = nodes.length > 0 && nodes[0].latitude 
-    ? [nodes[0].latitude, nodes[0].longitude] 
-    : defaultCenter;
+  // Dinamik Filtre Listeleri (Benzersiz Firma ve Şehirler)
+  const uniqueFirms = [...new Set(nodes.map(n => n.firm).filter(Boolean))];
+  const uniqueCities = [...new Set(nodes.map(n => n.city).filter(Boolean))];
 
-  const filteredNodes = nodes.filter(node => 
-    node.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    (node.label && node.label.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (node.city && node.city.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Filtrelenmiş Düğümler (Arama, Firma ve Şehir Kriterlerine Göre)
+  const filteredNodes = nodes.filter(node => {
+    const matchesSearch = 
+      node.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (node.label && node.label.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (node.city && node.city.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesFirm = selectedFirm ? node.firm === selectedFirm : true;
+    const matchesCity = selectedCity ? node.city === selectedCity : true;
+
+    return matchesSearch && matchesFirm && matchesCity;
+  });
+
+  const defaultCenter = [41.0082, 28.9784];
+  const mapCenter = filteredNodes.length > 0 && filteredNodes[0].latitude 
+    ? [filteredNodes[0].latitude, filteredNodes[0].longitude] 
+    : defaultCenter;
 
   const renderForm = () => (
     <div style={{ padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #ddd', maxHeight: '550px', overflowY: 'auto' }}>
@@ -330,7 +342,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       {/* MAIN CONTENT AREA */}
       {viewMode === 3 ? (
         
-        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE KOŞULLU (BOŞ OLMAYAN) ALANLARI GÖSTEREN LİSTE */
+        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE DİNAMİK FİLTRELİ LİSTE */
         <div style={{ position: 'relative', width: '100%', minHeight: '600px', height: 'calc(100vh - 120px)', marginTop: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           
           <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%', zIndex: 1 }}>
@@ -338,13 +350,23 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             <MapCenterUpdater center={focusedLocation} />
             <MapResizer viewMode={viewMode} isFormVisible={isFormVisible} isListOpen={isListOpen} listWidth={listWidth} />
 
-            {nodes.map(node => (
+            {filteredNodes.map(node => (
               node.latitude && node.longitude && (
                 <Marker key={node.id} position={[node.latitude, node.longitude]}>
                   <Popup>
-                    <strong>{node.code}</strong><br/>
-                    {node.label && <>{node.label}<br/></>}
-                    {node.city && <>{node.city} / </>}{node.country}
+                    <div style={{ fontSize: '12px', lineHeight: '1.4', minWidth: '180px' }}>
+                      <strong style={{ fontSize: '13px', color: '#0f172a' }}>{node.code}</strong>
+                      {node.label && <div><strong>Etiket:</strong> {node.label}</div>}
+                      {node.definition && <div><strong>Açıklama:</strong> {node.definition}</div>}
+                      {node.firm && <div><strong>Firma:</strong> {node.firm} {node.branch ? `(${node.branch})` : ''}</div>}
+                      {node.unit && <div><strong>Birim:</strong> {node.unit}</div>}
+                      {(node.address || node.city) && (
+                        <div><strong>Adres:</strong> {node.address ? `${node.address}, ` : ''}{node.city} {node.postalcode ? `- ${node.postalcode}` : ''}</div>
+                      )}
+                      <div style={{ marginTop: '4px', fontSize: '10px', color: '#64748b', borderTop: '1px solid #eee', paddingTop: '2px' }}>
+                        {new Date(node.event_date).toLocaleString('tr-TR')}
+                      </div>
+                    </div>
                   </Popup>
                 </Marker>
               )
@@ -360,7 +382,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             </button>
           )}
 
-          {/* Sol Panel (Drawer) - Koşullu Veri Gösterimi */}
+          {/* Sol Panel (Drawer) - Filtre Alanları ile Güncellendi */}
           {isListOpen && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: listWidth, height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.98)', zIndex: 1000, display: 'flex', flexDirection: 'column', boxShadow: '4px 0 15px rgba(0,0,0,0.2)', backdropFilter: 'blur(5px)', transition: 'width 0.3s ease' }}>
               
@@ -368,7 +390,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                   <input 
                     type="text" 
-                    placeholder="Ara (Kod, etiket, şehir)..." 
+                    placeholder="Ara (Kod, etiket)..." 
                     value={searchTerm} 
                     onChange={e => setSearchTerm(e.target.value)} 
                     style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '12px' }} 
@@ -386,6 +408,31 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                     style={{ padding: '6px 10px', cursor: 'pointer', border: 'none', backgroundColor: '#6c757d', color: 'white', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px' }}>
                     ✕
                   </button>
+                </div>
+
+                {/* Dinamik Firma ve Şehir Filtreleri */}
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <select 
+                    value={selectedFirm} 
+                    onChange={e => setSelectedFirm(e.target.value)}
+                    style={{ flex: 1, padding: '6px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '11px', backgroundColor: '#fff' }}
+                  >
+                    <option value="">Tüm Firmalar</option>
+                    {uniqueFirms.map(firm => (
+                      <option key={firm} value={firm}>{firm}</option>
+                    ))}
+                  </select>
+
+                  <select 
+                    value={selectedCity} 
+                    onChange={e => setSelectedCity(e.target.value)}
+                    style={{ flex: 1, padding: '6px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '11px', backgroundColor: '#fff' }}
+                  >
+                    <option value="">Tüm Şehirler</option>
+                    {uniqueCities.map(city => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -406,7 +453,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} 
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    {/* Satır 1: Kod ve Tarih */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
                       <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a' }}>
                         {node.code}
@@ -416,14 +462,12 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                       </span>
                     </div>
 
-                    {/* Satır 2: Serbest Metin / Etiket (Varsa göster) */}
                     {node.label && (
                       <div style={{ fontSize: '11px', color: '#334155', fontWeight: '600' }}>
                         {node.label}
                       </div>
                     )}
 
-                    {/* Detaylar (Açıklama, Firma, Şehir - Varsa göster) */}
                     {(node.definition || node.firm || node.city) && (
                       <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                         {node.definition && <span>{node.definition}</span>}
@@ -432,7 +476,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                       </div>
                     )}
 
-                    {/* İşlem ID */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
                       <span style={{ fontSize: '9px', color: '#94a3b8', fontFamily: 'monospace' }}>
                         {node.transaction_id}
@@ -469,13 +512,23 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                 <MapCenterUpdater center={focusedLocation} />
                 <MapResizer viewMode={viewMode} isFormVisible={isFormVisible} isListOpen={isListOpen} listWidth={listWidth} />
 
-                {nodes.map(node => (
+                {filteredNodes.map(node => (
                   node.latitude && node.longitude && (
                     <Marker key={node.id} position={[node.latitude, node.longitude]}>
                       <Popup>
-                        <strong>{node.code}</strong><br/>
-                        {node.label && <>{node.label}<br/></>}
-                        {node.city && <>{node.city} / </>}{node.country}
+                        <div style={{ fontSize: '12px', lineHeight: '1.4', minWidth: '180px' }}>
+                          <strong style={{ fontSize: '13px', color: '#0f172a' }}>{node.code}</strong>
+                          {node.label && <div><strong>Etiket:</strong> {node.label}</div>}
+                          {node.definition && <div><strong>Açıklama:</strong> {node.definition}</div>}
+                          {node.firm && <div><strong>Firma:</strong> {node.firm} {node.branch ? `(${node.branch})` : ''}</div>}
+                          {node.unit && <div><strong>Birim:</strong> {node.unit}</div>}
+                          {(node.address || node.city) && (
+                            <div><strong>Adres:</strong> {node.address ? `${node.address}, ` : ''}{node.city} {node.postalcode ? `- ${node.postalcode}` : ''}</div>
+                          )}
+                          <div style={{ marginTop: '4px', fontSize: '10px', color: '#64748b', borderTop: '1px solid #eee', paddingTop: '2px' }}>
+                            {new Date(node.event_date).toLocaleString('tr-TR')}
+                          </div>
+                        </div>
                       </Popup>
                     </Marker>
                   )
@@ -521,7 +574,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {nodes.map(node => (
+                    {filteredNodes.map(node => (
                       <tr 
                         key={node.id} 
                         onClick={() => setFocusedLocation([node.latitude, node.longitude])} 
