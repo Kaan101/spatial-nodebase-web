@@ -89,9 +89,22 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
   const [searchTerm, setSearchTerm] = useState(''); 
   const [listWidth, setListWidth] = useState('25%'); 
 
+  // Genişletilmiş Form State'i
   const [formData, setFormData] = useState({
-    code: 'TRK-002', label: 'Test Aracı', transaction_id: 'TXN-' + Math.floor(Math.random() * 10000),
-    latitude: 41.0150, longitude: 28.9850
+    code: 'TRK-002', 
+    label: 'Test Aracı', 
+    definition: 'Soğuk zincir sevkiyatı',
+    transaction_id: 'TXN-' + Math.floor(Math.random() * 10000),
+    unit: 'Lojistik',
+    firm: 'Mobool A.Ş.',
+    branch: 'Anadolu Şubesi',
+    latitude: 41.0150, 
+    longitude: 28.9850,
+    country: 'Türkiye',
+    region: 'Marmara',
+    city: 'İstanbul',
+    address: 'İkitelli OSB',
+    postalcode: '34306'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -113,9 +126,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         }
       });
 
-      // En son tarih en üstte olacak şekilde sıralama (Azalan / Descending)
       uniqueNodes.sort((a, b) => new Date(b.event_date) - new Date(a.event_date));
-
       setNodes(uniqueNodes);
     } catch (error) {
       console.error("Veri çekme hatası:", error);
@@ -126,13 +137,8 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
 
   useEffect(() => {
     if (!apiKey) return;
-    
     fetchNodes(); 
-
-    const intervalId = setInterval(() => {
-      fetchNodes();
-    }, 3000); 
-
+    const intervalId = setInterval(fetchNodes, 3000); 
     return () => clearInterval(intervalId); 
   }, [apiKey]);
 
@@ -149,7 +155,10 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       });
       await fetchNodes();
       setFocusedLocation([formData.latitude, formData.longitude]);
-      setFormData({ ...formData, transaction_id: 'TXN-' + Math.floor(Math.random() * 10000) });
+      setFormData(prev => ({
+        ...prev,
+        transaction_id: 'TXN-' + Math.floor(Math.random() * 10000)
+      }));
       setIsFormVisible(false); 
     } catch (error) {
       alert("Kayıt sırasında hata oluştu!");
@@ -159,17 +168,26 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
   };
 
   const handleExportCSV = () => {
-    const headers = ['Tarih', 'Kod', 'Açıklama', 'İşlem ID', 'Enlem', 'Boylam'];
+    const headers = ['Tarih', 'Kod', 'Etiket', 'Açıklama', 'İşlem ID', 'Birim', 'Firma', 'Şube', 'Enlem', 'Boylam', 'Ülke', 'Bölge', 'Şehir', 'Adres', 'Posta Kodu'];
     const csvRows = [headers.join(',')];
 
     nodes.forEach(node => {
       const row = [
         new Date(node.event_date).toLocaleString('tr-TR'),
         node.code,
-        node.label,
-        node.transaction_id,
+        node.label || '',
+        node.definition || '',
+        node.transaction_id || '',
+        node.unit || '',
+        node.firm || '',
+        node.branch || '',
         node.latitude,
-        node.longitude
+        node.longitude,
+        node.country || '',
+        node.region || '',
+        node.city || '',
+        node.address || '',
+        node.postalcode || ''
       ];
       csvRows.push(row.map(v => `"${v}"`).join(','));
     });
@@ -199,13 +217,11 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
 
         const headers = rows[0].split(',').map(h => h.replace(/"/g, '').trim());
         const codeIdx = headers.indexOf('Kod');
-        const labelIdx = headers.indexOf('Açıklama');
         const latIdx = headers.indexOf('Enlem');
         const lngIdx = headers.indexOf('Boylam');
-        const txnIdx = headers.indexOf('İşlem ID');
 
         if (codeIdx === -1 || latIdx === -1 || lngIdx === -1) {
-          throw new Error("Gerekli sütunlar bulunamadı.");
+          throw new Error("Gerekli sütunlar (Kod, Enlem, Boylam) bulunamadı.");
         }
 
         for (let i = 1; i < rows.length; i++) {
@@ -214,10 +230,19 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
           if (cols[codeIdx] && cols[latIdx] && cols[lngIdx]) {
             const payload = {
               code: cols[codeIdx],
-              label: labelIdx !== -1 ? cols[labelIdx] : 'CSV İçeri Aktarım',
+              label: cols[headers.indexOf('Etiket')] || 'CSV Kayıt',
+              definition: cols[headers.indexOf('Açıklama')] || '',
+              transaction_id: cols[headers.indexOf('İşlem ID')] || 'TXN-CSV-' + Math.floor(Math.random() * 10000),
+              unit: cols[headers.indexOf('Birim')] || '',
+              firm: cols[headers.indexOf('Firma')] || '',
+              branch: cols[headers.indexOf('Şube')] || '',
               latitude: parseFloat(cols[latIdx]),
               longitude: parseFloat(cols[lngIdx]),
-              transaction_id: (txnIdx !== -1 && cols[txnIdx]) ? cols[txnIdx] : 'TXN-CSV-' + Math.floor(Math.random() * 10000),
+              country: cols[headers.indexOf('Ülke')] || '',
+              region: cols[headers.indexOf('Bölge')] || '',
+              city: cols[headers.indexOf('Şehir')] || '',
+              address: cols[headers.indexOf('Adres')] || '',
+              postalcode: cols[headers.indexOf('Posta Kodu')] || '',
               event_date: new Date().toISOString()
             };
             await axios.post(`${API_URL}/nodes`, payload, {
@@ -225,11 +250,11 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             });
           }
         }
-        alert("CSV verileri başarıyla sisteme yüklendi!");
+        alert("CSV verileri başarıyla yüklendi!");
         await fetchNodes();
       } catch (error) {
         console.error(error);
-        alert("Hata oluştu! Dosyanın doğru formatta olduğundan emin olun.");
+        alert("Hata oluştu! Dosya formatını kontrol edin.");
       } finally {
         setIsImporting(false);
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -245,18 +270,30 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
 
   const filteredNodes = nodes.filter(node => 
     node.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    node.label.toLowerCase().includes(searchTerm.toLowerCase())
+    (node.label && node.label.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (node.city && node.city.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const renderForm = () => (
-    <div style={{ padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #ddd' }}>
-      <h3 style={{ marginTop: '0' }}>Manuel Konum Gönder</h3>
-      <form onSubmit={handleAddNode} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <input type="text" placeholder="Araç Kodu" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} style={{ padding: '8px' }} required />
-        <input type="text" placeholder="Açıklama/Etiket" value={formData.label} onChange={e => setFormData({...formData, label: e.target.value})} style={{ padding: '8px' }} required />
-        <input type="number" step="any" placeholder="Enlem (Latitude)" value={formData.latitude} onChange={e => setFormData({...formData, latitude: parseFloat(e.target.value)})} style={{ padding: '8px' }} required />
-        <input type="number" step="any" placeholder="Boylam (Longitude)" value={formData.longitude} onChange={e => setFormData({...formData, longitude: parseFloat(e.target.value)})} style={{ padding: '8px' }} required />
-        <button type="submit" disabled={isSubmitting || isImporting} style={{ padding: '10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: (isSubmitting || isImporting) ? 'not-allowed' : 'pointer' }}>
+    <div style={{ padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #ddd', maxHeight: '550px', overflowY: 'auto' }}>
+      <h3 style={{ marginTop: '0' }}>Yeni Konum ve Detay Ekle</h3>
+      <form onSubmit={handleAddNode} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <input type="text" placeholder="Araç/Cihaz Kodu *" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} style={{ padding: '7px' }} required />
+        <input type="text" placeholder="Serbest Metin / Etiket (label)" value={formData.label} onChange={e => setFormData({...formData, label: e.target.value})} style={{ padding: '7px' }} />
+        <input type="text" placeholder="Detaylı Tanım (definition)" value={formData.definition} onChange={e => setFormData({...formData, definition: e.target.value})} style={{ padding: '7px' }} />
+        <input type="text" placeholder="İşlem veya Sinyal Takip ID" value={formData.transaction_id} onChange={e => setFormData({...formData, transaction_id: e.target.value})} style={{ padding: '7px' }} />
+        <input type="text" placeholder="Birim Bilgisi (unit)" value={formData.unit} onChange={e => setFormData({...formData, unit: e.target.value})} style={{ padding: '7px' }} />
+        <input type="text" placeholder="Kurum veya Firma Adı (firm)" value={formData.firm} onChange={e => setFormData({...formData, firm: e.target.value})} style={{ padding: '7px' }} />
+        <input type="text" placeholder="Şube veya Departman (branch)" value={formData.branch} onChange={e => setFormData({...formData, branch: e.target.value})} style={{ padding: '7px' }} />
+        <input type="number" step="any" placeholder="Enlem (Latitude) *" value={formData.latitude} onChange={e => setFormData({...formData, latitude: parseFloat(e.target.value)})} style={{ padding: '7px' }} required />
+        <input type="number" step="any" placeholder="Boylam (Longitude) *" value={formData.longitude} onChange={e => setFormData({...formData, longitude: parseFloat(e.target.value)})} style={{ padding: '7px' }} required />
+        <input type="text" placeholder="Ülke Bilgisi (country)" value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} style={{ padding: '7px' }} />
+        <input type="text" placeholder="Bölge Bilgisi (region)" value={formData.region} onChange={e => setFormData({...formData, region: e.target.value})} style={{ padding: '7px' }} />
+        <input type="text" placeholder="Şehir Bilgisi (city)" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} style={{ padding: '7px' }} />
+        <input type="text" placeholder="Açık Adres (address)" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} style={{ padding: '7px' }} />
+        <input type="text" placeholder="Posta Kodu (postalcode)" value={formData.postalcode} onChange={e => setFormData({...formData, postalcode: e.target.value})} style={{ padding: '7px' }} />
+        
+        <button type="submit" disabled={isSubmitting || isImporting} style={{ marginTop: '5px', padding: '10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: (isSubmitting || isImporting) ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
           {isSubmitting ? 'Gönderiliyor...' : 'API\'ye Gönder'}
         </button>
       </form>
@@ -293,7 +330,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
       {/* MAIN CONTENT AREA */}
       {viewMode === 3 ? (
         
-        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE 2 SATIRLI LİSTE */
+        /* 3. GÖRÜNÜM: TAM EKRAN HARİTA VE KOŞULLU (BOŞ OLMAYAN) ALANLARI GÖSTEREN LİSTE */
         <div style={{ position: 'relative', width: '100%', minHeight: '600px', height: 'calc(100vh - 120px)', marginTop: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           
           <MapContainer center={mapCenter} zoom={6} style={{ height: '100%', width: '100%', zIndex: 1 }}>
@@ -304,7 +341,11 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             {nodes.map(node => (
               node.latitude && node.longitude && (
                 <Marker key={node.id} position={[node.latitude, node.longitude]}>
-                  <Popup><strong>{node.code}</strong><br/>{node.label}<br/>{new Date(node.event_date).toLocaleTimeString('tr-TR')}</Popup>
+                  <Popup>
+                    <strong>{node.code}</strong><br/>
+                    {node.label && <>{node.label}<br/></>}
+                    {node.city && <>{node.city} / </>}{node.country}
+                  </Popup>
                 </Marker>
               )
             ))}
@@ -319,7 +360,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
             </button>
           )}
 
-          {/* Sol Panel (Drawer) */}
+          {/* Sol Panel (Drawer) - Koşullu Veri Gösterimi */}
           {isListOpen && (
             <div style={{ position: 'absolute', top: 0, left: 0, width: listWidth, height: '100%', backgroundColor: 'rgba(255, 255, 255, 0.98)', zIndex: 1000, display: 'flex', flexDirection: 'column', boxShadow: '4px 0 15px rgba(0,0,0,0.2)', backdropFilter: 'blur(5px)', transition: 'width 0.3s ease' }}>
               
@@ -327,7 +368,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                   <input 
                     type="text" 
-                    placeholder="Ara..." 
+                    placeholder="Ara (Kod, etiket, şehir)..." 
                     value={searchTerm} 
                     onChange={e => setSearchTerm(e.target.value)} 
                     style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '12px' }} 
@@ -356,20 +397,17 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                     key={node.id} 
                     onClick={() => setFocusedLocation([node.latitude, node.longitude])}
                     style={{ 
-                      padding: '6px 10px', 
+                      padding: '8px 10px', 
                       backgroundColor: 'transparent', 
                       cursor: 'pointer', 
                       borderBottom: '1px solid #e2e8f0', 
                       transition: 'background-color 0.15s ease'
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f1f5f9';
-                    }} 
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} 
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1px' }}>
+                    {/* Satır 1: Kod ve Tarih */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
                       <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a' }}>
                         {node.code}
                       </span>
@@ -378,10 +416,24 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                       </span>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '11px', color: '#334155', fontWeight: 'normal', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
+                    {/* Satır 2: Serbest Metin / Etiket (Varsa göster) */}
+                    {node.label && (
+                      <div style={{ fontSize: '11px', color: '#334155', fontWeight: '600' }}>
                         {node.label}
-                      </span>
+                      </div>
+                    )}
+
+                    {/* Detaylar (Açıklama, Firma, Şehir - Varsa göster) */}
+                    {(node.definition || node.firm || node.city) && (
+                      <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {node.definition && <span>{node.definition}</span>}
+                        {node.firm && <span>• {node.firm}</span>}
+                        {node.city && <span>• {node.city}</span>}
+                      </div>
+                    )}
+
+                    {/* İşlem ID */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
                       <span style={{ fontSize: '9px', color: '#94a3b8', fontFamily: 'monospace' }}>
                         {node.transaction_id}
                       </span>
@@ -420,7 +472,11 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                 {nodes.map(node => (
                   node.latitude && node.longitude && (
                     <Marker key={node.id} position={[node.latitude, node.longitude]}>
-                      <Popup><strong>{node.code}</strong><br/>{node.label}<br/>{new Date(node.event_date).toLocaleTimeString('tr-TR')}</Popup>
+                      <Popup>
+                        <strong>{node.code}</strong><br/>
+                        {node.label && <>{node.label}<br/></>}
+                        {node.city && <>{node.city} / </>}{node.country}
+                      </Popup>
                     </Marker>
                   )
                 ))}
@@ -458,7 +514,8 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                     <tr style={{ backgroundColor: '#f8f9fa', textAlign: 'left' }}>
                       <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Tarih</th>
                       <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Kod</th>
-                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Açıklama</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Etiket</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Firma / Şehir</th>
                       <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>İşlem ID</th>
                       <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Koordinat</th>
                     </tr>
@@ -474,7 +531,8 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                       >
                         <td style={{ padding: '10px' }}>{new Date(node.event_date).toLocaleString('tr-TR')}</td>
                         <td style={{ padding: '10px' }}><strong>{node.code}</strong></td>
-                        <td style={{ padding: '10px' }}>{node.label}</td>
+                        <td style={{ padding: '10px' }}>{node.label || '-'}</td>
+                        <td style={{ padding: '10px' }}>{node.firm ? `${node.firm} / ` : ''}{node.city || '-'}</td>
                         <td style={{ padding: '10px' }}>{node.transaction_id}</td>
                         <td style={{ padding: '10px' }}>{node.latitude}, {node.longitude}</td>
                       </tr>
