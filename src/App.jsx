@@ -102,12 +102,9 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
   const [focusedLocation, setFocusedLocation] = useState(null); 
   const fileInputRef = useRef(null);
   
-  // viewMode 1: Masaüstü Görünüm (Eski 1 ve 2'nin birleşimi)
-  // viewMode 3: Tam Ekran Harita Görünümü
   const [viewMode, setViewMode] = useState(1); 
-  
-  const [isFormVisible, setIsFormVisible] = useState(false); // Masaüstü için form görünürlüğü
-  const [isDrawerFormOpen, setIsDrawerFormOpen] = useState(false); // Tam ekran görünüm için sol panel formu
+  const [isFormVisible, setIsFormVisible] = useState(false); 
+  const [isDrawerFormOpen, setIsDrawerFormOpen] = useState(false);
   const [isDrawerFilterOpen, setIsDrawerFilterOpen] = useState(false);
   
   const [isListOpen, setIsListOpen] = useState(false); 
@@ -426,6 +423,11 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
     return matchesSearch && matchesFirm && matchesCity && matchCode && matchLabel && matchDef && matchTxn && matchUnit && matchFirmInput && matchBranch && matchCountry && matchRegion && matchCityInput && matchAddress && matchPost;
   });
 
+  const currentFirmsCount = [...new Set(filteredNodes.map(n => n.firm).filter(Boolean))].length;
+  const currentCitiesCount = [...new Set(filteredNodes.map(n => n.city).filter(Boolean))].length;
+  const currentVehiclesCount = [...new Set(filteredNodes.map(n => n.code).filter(Boolean))].length;
+  const currentRecordsCount = filteredNodes.length;
+
   const vehicleRouteCoordinates = selectedVehicle 
     ? nodes
         .filter(n => n.code === selectedVehicle && n.latitude && n.longitude)
@@ -453,12 +455,10 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
     return `${fullDateStr} ${timeStr}`;
   };
 
-  // Yeni Form Yapısı (Çarpı ikonu eklendi, onClose prope ile kapatılabilir)
   const renderForm = (onClose) => (
     <div style={{ padding: '16px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box', fontSize: '11px', textAlign: 'left', position: 'relative' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h4 style={{ margin: '0', fontSize: '13px' }}>Yeni Konum ve Detay Ekle</h4>
-        {/* Çarpı İkonu */}
         <button 
           type="button"
           onClick={onClose} 
@@ -596,12 +596,37 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
           <button onClick={onLogout} style={{ padding: '6px 12px', cursor: 'pointer', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', fontSize: '11px' }}>Çıkış Yap</button>
         </div>
       </div>
+
+      {/* DİNAMİK ÖZET İSTATİSTİK KARTLARI (Kompakt ve İkonsuz Tek Satır) */}
+      <div style={{ display: 'flex', gap: '12px', marginTop: '16px', flexWrap: 'nowrap' }}>
+        
+        <div style={{ flex: 1, minWidth: '0', backgroundColor: '#fff', border: '1px solid #e0e0e0', borderRadius: '6px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+          <div style={{ fontSize: '11px', color: '#5f6368', fontWeight: '600' }}>Aktif Araç</div>
+          <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#202124' }}>{currentVehiclesCount}</div>
+        </div>
+
+        <div style={{ flex: 1, minWidth: '0', backgroundColor: '#fff', border: '1px solid #e0e0e0', borderRadius: '6px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+          <div style={{ fontSize: '11px', color: '#5f6368', fontWeight: '600' }}>Kayıtlı Firma</div>
+          <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#202124' }}>{currentFirmsCount}</div>
+        </div>
+
+        <div style={{ flex: 1, minWidth: '0', backgroundColor: '#fff', border: '1px solid #e0e0e0', borderRadius: '6px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+          <div style={{ fontSize: '11px', color: '#5f6368', fontWeight: '600' }}>Faaliyet Şehri</div>
+          <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#202124' }}>{currentCitiesCount}</div>
+        </div>
+
+        <div style={{ flex: 1, minWidth: '0', backgroundColor: '#fff', border: '1px solid #e0e0e0', borderRadius: '6px', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+          <div style={{ fontSize: '11px', color: '#5f6368', fontWeight: '600' }}>Gösterilen Kayıt</div>
+          <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#202124' }}>{currentRecordsCount}</div>
+        </div>
+
+      </div>
       
       {/* MAIN CONTENT AREA */}
       {viewMode === 3 ? (
         
         /* 3. GÖRÜNÜM: TAM EKRAN HARİTA */
-        <div style={{ position: 'relative', width: '100%', minHeight: '600px', height: 'calc(100vh - 120px)', marginTop: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
+        <div style={{ position: 'relative', width: '100%', minHeight: '520px', height: 'calc(100vh - 210px)', marginTop: '16px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc' }}>
           
           <MapContainer center={defaultCenter} zoom={6} style={{ height: '100%', width: '100%', zIndex: 1 }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -701,6 +726,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
               
               <div style={{ padding: '10px', borderBottom: '1px solid #e0e0e0', display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: '#fff' }}>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', backgroundColor: 'transparent', borderRadius: '4px', padding: '0 8px', border: '1px solid #ccc' }}>
                     <input 
                       type="text" 
@@ -717,6 +743,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                     style={{ padding: '5px 8px', fontSize: '11px', backgroundColor: '#f1f3f4', border: '1px solid #dadce0', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', color: '#3c4043' }}>
                     {listWidth === '30%' ? '<' : '>'}
                   </button>
+                  
                 </div>
 
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'stretch', width: '100%', marginTop: '2px' }}>
@@ -761,7 +788,7 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
 
               <div style={{ flex: 1, overflowY: 'auto', padding: (isDrawerFormOpen || isDrawerFilterOpen) ? '10px' : '0', display: 'flex', flexDirection: 'column', backgroundColor: '#fff' }}>
                 {isDrawerFormOpen ? (
-                  renderForm(() => setIsDrawerFormOpen(false)) // Kapatma callback'i gönderildi
+                  renderForm(() => setIsDrawerFormOpen(false))
                 ) : isDrawerFilterOpen ? (
                   renderFilterForm()
                 ) : (
@@ -839,16 +866,14 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
         
         /* BİRLEŞTİRİLMİŞ MASAÜSTÜ GÖRÜNÜMÜ (1. GÖRÜNÜM) */
         <>
-          <div style={{ display: 'flex', gap: '20px', marginTop: '20px', flexDirection: 'row' }}>
+          <div style={{ display: 'flex', gap: '20px', marginTop: '16px', flexDirection: 'row' }}>
             
-            {/* Form alanı açıldığında sol tarafta görünür (Genişliği sabit veya flex) */}
             {isFormVisible && (
               <div style={{ flex: '1', minWidth: '320px', maxWidth: '400px' }}>
                 {renderForm(() => setIsFormVisible(false))}
               </div>
             )}
 
-            {/* Harita alanı. Form kapalıysa tüm alanı kaplar, açıksa kalan alanı kaplar. */}
             <div style={{ flex: '2', height: '620px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #ccc', transition: 'flex 0.3s ease' }}>
               <MapContainer center={defaultCenter} zoom={6} style={{ height: '100%', width: '100%', zIndex: 1 }}>
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -898,7 +923,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
               <h3 style={{ fontSize: '14px', margin: 0 }}>Son Konum ve İşlem Verileri</h3>
               <div style={{ display: 'flex', gap: '8px' }}>
                 
-                {/* Form kapalıyken Ekle butonu liste üzerinde görünür */}
                 {!isFormVisible && (
                   <button 
                     onClick={() => setIsFormVisible(true)} 
@@ -906,13 +930,6 @@ function Dashboard({ tenantName, apiKey, onLogout }) {
                     ➕ Konum Ekle
                   </button>
                 )}
-
-                <button onClick={() => fileInputRef.current.click()} disabled={isImporting} style={{ padding: '6px 14px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', cursor: isImporting ? 'not-allowed' : 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-                  {isImporting ? 'Yükleniyor...' : '⬆️ CSV Yükle'}
-                </button>
-                <button onClick={handleExportCSV} style={{ padding: '6px 14px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-                  ⬇️ CSV İndir
-                </button>
               </div>
             </div>
             
